@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from viewer.mathutil import slerp
+from viewer.mathutil import mat3_to_quat, slerp, trs_to_mat4
 from viewer.skeleton import Pose, Skeleton
 
 
@@ -20,7 +20,7 @@ class AnimationClip:
     duration: float
     rotations: dict[str, Track]
     translations: dict[str, Track]
-    hips_rest_t: np.ndarray | None  # translation locale de repos des Hips dans le fichier d'animation
+    skeleton: Skeleton  # squelette du fichier d'animation (sa pose de repos sert de référence)
 
     def track_names(self) -> set[str]:
         return set(self.rotations) | set(self.translations)
@@ -45,22 +45,73 @@ def sample_track(track: Track, t: float) -> np.ndarray:
     return values[k] + u * (values[k + 1] - values[k])
 
 
-def hips_ratio(skeleton: Skeleton, clip: AnimationClip) -> float:
-    """Rapport d'échelle entre les Hips de repos du modèle et celles de l'animation (cm/m)."""
-    i = skeleton.index("Hips")
-    if i is None or clip.hips_rest_t is None:
-        return 1.0
-    anim_length = np.linalg.norm(clip.hips_rest_t)
-    return float(np.linalg.norm(skeleton.rest_t[i]) / anim_length) if anim_length > 1e-8 else 1.0
+def sample_pose(clip: AnimationClip, t: float) -> Pose:
+    """Pose du squelette source du clip à l'instant t (toutes les pistes appliquées)."""
+    sk = clip.skeleton
+    pose = sk.rest_pose()
+    for tracks, values in ((clip.rotations, pose.r), (clip.translations, pose.t)):
+        for name, track in tracks.items():
+            i = sk.index(name)
+            if i is not None:
+                values[i] = sample_track(track, t)
+    return pose
 
 
-def apply_clip(clip: AnimationClip, skeleton: Skeleton, pose: Pose, t: float, ratio: float) -> None:
-    """Écrit dans `pose` : rotations de tous les bones appariés, translation des Hips seulement."""
-    for name, track in clip.rotations.items():
-        i = skeleton.index(name)
-        if i is not None:
-            pose.r[i] = sample_track(track, t)
-    hips_track = clip.translations.get("Hips")
-    i = skeleton.index("Hips")
-    if hips_track is not None and i is not None:
-        pose.t[i] = sample_track(hips_track, t) * ratio
+def _rotations(globals_: np.ndarray) -> np.ndarray:
+    """Partie rotation de matrices globales (échelle retirée)."""
+    m = globals_[..., :3, :3]
+    return m / np.linalg.norm(m, axis=-2, keepdims=True)
+
+
+class Retargeter:
+    """Transfère un clip sur un autre squelette en espace monde.
+
+    Pour chaque bone apparié par nom, la variation de rotation monde par rapport à la
+    T-pose source est appliquée à la T-pose du modèle : les axes locaux des deux rigs
+    peuvent différer (export Blender, etc.) tant que leurs poses de repos coïncident.
+    La position des Hips suit le déplacement source, mis à l'échelle de leur hauteur.
+    """
+
+    def __init__(self, model: Skeleton, clip: AnimationClip):
+        self.model, self.clip = model, clip
+        source = clip.skeleton
+        self.pairs = {}
+        for name in clip.rotations:
+            i, j = model.index(name), source.index(name)
+            if i is not None and j is not None:
+                self.pairs[i] = j
+        model_rest = model.global_matrices(model.rest_pose())
+        source_rest = source.global_matrices(source.rest_pose())
+        self.model_rest_r = _rotations(model_rest)
+        self.source_rest_r = _rotations(source_rest)
+        self.hips = model.index("Hips")
+        self.source_hips = source.index("Hips") if "Hips" in clip.translations else None
+        self.ratio = 1.0
+        if self.hips is not None and self.source_hips is not None:
+            self.model_hips_rest = model_rest[self.hips][:3, 3]
+            self.source_hips_rest = source_rest[self.source_hips][:3, 3]
+            if abs(self.source_hips_rest[1]) > 1e-8:
+                self.ratio = float(self.model_hips_rest[1] / self.source_hips_rest[1])
+        else:
+            self.source_hips = None
+
+    def pose(self, t: float) -> Pose:
+        source_globals = self.clip.skeleton.global_matrices(sample_pose(self.clip, t))
+        source_r = _rotations(source_globals)
+        sk = self.model
+        pose = sk.rest_pose()
+        globals_ = np.empty((len(sk.names), 4, 4))
+        for i in sk.order:
+            p = sk.parents[i]
+            parent = globals_[p] if p >= 0 else np.eye(4)
+            j = self.pairs.get(i)
+            if j is not None:
+                target = source_r[j] @ self.source_rest_r[j].T @ self.model_rest_r[i]
+                parent_r = _rotations(parent)
+                pose.r[i] = mat3_to_quat(parent_r.T @ target)
+            if i == self.hips and self.source_hips is not None:
+                offset = source_globals[self.source_hips][:3, 3] - self.source_hips_rest
+                world = np.append(self.model_hips_rest + offset * self.ratio, 1.0)
+                pose.t[i] = (np.linalg.inv(parent) @ world)[:3]
+            globals_[i] = parent @ trs_to_mat4(pose.t[i:i + 1], pose.r[i:i + 1], pose.s[i:i + 1])[0]
+        return pose

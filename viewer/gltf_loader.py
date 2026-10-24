@@ -243,6 +243,4 @@ def _read_clip(gltf, blob, index: int, skeleton: Skeleton) -> AnimationClip:
         tracks = rotations if target.path == "rotation" else translations
         tracks[skeleton.names[target.node]] = Track(times, values, interpolation)
         duration = max(duration, float(times[-1]))
-    hips = skeleton.index("Hips")
-    hips_rest_t = skeleton.rest_t[hips].copy() if hips is not None else None
-    return AnimationClip(anim.name or f"clip{index}", duration, rotations, translations, hips_rest_t)
+    return AnimationClip(anim.name or f"clip{index}", duration, rotations, translations, skeleton)

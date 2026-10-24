@@ -94,14 +94,23 @@ Les bones de doigts et `*_End` absents sont signalés en info, pas en avertissem
 
 ## Application d'une animation sur un modèle
 
-- Rotations : appliquées à tous les bones appariés par nom canonique.
+Retargeting en espace monde : chaque clip conserve le squelette de son fichier
+(sa pose de repos sert de référence). Les rigs peuvent avoir des axes locaux
+différents (ex. export via Blender : Hips tournées de −90° sur X) tant que leurs
+poses de repos coïncident en monde (T-pose Mixamo).
+
+- Rotations : pour chaque bone apparié par nom canonique, variation monde
+  `D = R_anim(t) · R_anim_reposᵀ`, puis `R_modèle(t) = D · R_modèle_repos`,
+  reconvertie en rotation locale à partir du parent déjà calculé. Les bones non
+  animés gardent leur rotation locale de repos.
 - Translations : ignorées sauf pour `Hips` (les autres bones gardent la
   translation de repos du modèle, ce qui évite les déformations entre
   personnages de proportions différentes).
-- Translation de `Hips` : multipliée par le ratio
-  `hauteur des Hips au repos du modèle / hauteur des Hips au repos de l'animation`
-  (les GLB d'animation contiennent les nœuds du squelette de repos). Ceci gère
-  les écarts d'unités cm/m fréquents avec Mixamo.
+- Position monde de `Hips` : `repos_modèle + (anim(t) − repos_anim) × ratio`, avec
+  `ratio = hauteur monde des Hips au repos du modèle / celle de l'animation`, puis
+  exprimée dans l'espace du parent. Ceci gère les écarts d'unités cm/m fréquents
+  avec Mixamo.
+- Même squelette des deux côtés : résultat identique à une copie des pistes locales.
 - Échelles d'animation : ignorées.
 - Interpolation : `LINEAR` (lerp pour translation, slerp pour rotation) et `STEP`.
   `CUBICSPLINE` est échantillonné en ne gardant que les valeurs (sans tangentes).

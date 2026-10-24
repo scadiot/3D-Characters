@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from viewer.animation import AnimationClip, apply_clip, hips_ratio, loop_time
+from viewer.animation import AnimationClip, Retargeter, loop_time
 from viewer.gltf_loader import LoadedFile
 
 
@@ -20,7 +20,7 @@ class Player:
         self.time = 0.0
         self.speed = 1.0
         self.playing = True
-        self._ratio = 1.0
+        self._retargeter: Retargeter | None = None
 
     @property
     def duration(self) -> float:
@@ -28,18 +28,18 @@ class Player:
 
     def set_model(self, model: LoadedFile | None) -> None:
         self.model = model
-        self._update_ratio()
+        self._update_retargeter()
 
     def set_clip(self, clip: AnimationClip | None) -> None:
         self.clip = clip
         self.time = 0.0
-        self._update_ratio()
+        self._update_retargeter()
 
-    def _update_ratio(self) -> None:
+    def _update_retargeter(self) -> None:
         if self.model and self.clip:
-            self._ratio = hips_ratio(self.model.skeleton, self.clip)
+            self._retargeter = Retargeter(self.model.skeleton, self.clip)
         else:
-            self._ratio = 1.0
+            self._retargeter = None
 
     def advance(self, dt: float) -> None:
         if self.playing and self.duration > 0:
@@ -52,9 +52,7 @@ class Player:
         if self.model is None:
             return None
         sk = self.model.skeleton
-        pose = sk.rest_pose()
-        if self.clip is not None:
-            apply_clip(self.clip, sk, pose, self.time, self._ratio)
+        pose = self._retargeter.pose(self.time) if self._retargeter else sk.rest_pose()
         g = sk.global_matrices(pose)
         return FrameData(g, [g[s.joints] @ s.inverse_bind for s in self.model.skins])
 

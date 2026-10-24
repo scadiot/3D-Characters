@@ -31,7 +31,7 @@ def test_anim_clip(anim_path):
     assert set(clip.rotations) == {"Spine", "Ghost"}
     assert set(clip.translations) == {"Hips"}
     assert clip.rotations["Ghost"].interpolation == "STEP"
-    assert np.allclose(clip.hips_rest_t, [0, 1, 0])
+    assert np.allclose(clip.skeleton.rest_t[clip.skeleton.index("Hips")], [0, 1, 0])
     assert clip.track_names() == {"Hips", "Spine", "Ghost"}
 
 
