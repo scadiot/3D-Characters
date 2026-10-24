@@ -5,6 +5,8 @@ import numpy as np
 
 from viewer.mathutil import trs_to_mat4
 
+_LEFT_RIGHT = (("LeftUpLeg", "RightUpLeg"), ("LeftArm", "RightArm"), ("LeftShoulder", "RightShoulder"))
+
 
 @dataclass
 class Pose:
@@ -43,6 +45,25 @@ class Skeleton:
             p = self.parents[i]
             result[i] = local[i] if p < 0 else result[p] @ local[i]
         return result
+
+    def facing_yaw(self) -> float:
+        """Angle autour de Y entre +Z et la direction vers laquelle regarde le perso au repos."""
+        g = self.global_matrices(self.rest_pose())
+        left = np.zeros(3)
+        for left_name, right_name in _LEFT_RIGHT:
+            i, j = self.index(left_name), self.index(right_name)
+            if i is not None and j is not None:
+                left += g[i][:3, 3] - g[j][:3, 3]
+        forward = np.cross(left, [0.0, 1.0, 0.0])
+        if np.hypot(forward[0], forward[2]) < 1e-8:
+            return 0.0
+        return float(np.arctan2(forward[0], forward[2]))
+
+
+def yaw_matrix(angle: float) -> np.ndarray:
+    """Rotation 4x4 autour de Y."""
+    c, s = np.cos(angle), np.sin(angle)
+    return np.array([[c, 0, s, 0], [0, 1, 0, 0], [-s, 0, c, 0], [0, 0, 0, 1.0]])
 
 
 def _parents_first(parents: np.ndarray) -> list[int]:

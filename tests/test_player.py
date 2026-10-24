@@ -57,3 +57,24 @@ def test_bounds(model_path):
     p.set_model(load_glb(model_path))
     lo, hi = p.bounds()
     assert np.allclose(lo, [-0.1, 1, 0]) and np.allclose(hi, [0.1, 1.2, 0])
+
+
+def test_bounds_use_skinned_rest_positions(model_path):
+    # Mesh stocké en cm : positions ×100, compensées dans l'inverse bind.
+    f = load_glb(model_path)
+    f.meshes[0].positions = f.meshes[0].positions * 100
+    f.skins[0].inverse_bind = f.skins[0].inverse_bind @ np.diag([0.01, 0.01, 0.01, 1])
+    p = Player()
+    p.set_model(f)
+    lo, hi = p.bounds()
+    assert np.allclose(lo, [-0.1, 1, 0], atol=1e-6) and np.allclose(hi, [0.1, 1.2, 0], atol=1e-6)
+
+
+def test_model_facing_minus_z_is_turned_toward_camera():
+    from pathlib import Path
+    from test_skeleton import _legs
+    from viewer.gltf_loader import LoadedFile
+    p = Player()
+    p.set_model(LoadedFile(Path("x.glb"), _legs(np.pi), [], [], []))
+    g = p.frame().globals
+    assert g[2][0, 3] > 0 and g[3][0, 3] < 0  # jambe gauche du côté +X, comme un perso regardant +Z

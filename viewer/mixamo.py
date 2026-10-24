@@ -1,6 +1,6 @@
 """Convention de nommage des bones Mixamo."""
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Iterable
 
 _PREFIX = re.compile(r"^mixamorig\d*[:_]")
@@ -32,6 +32,7 @@ class ValidationReport:
     unknown_bones: list[str]      # info
     missing_optional: list[str]   # info
     unanimated: list[str]         # info
+    ignored_tracks: list[str] = field(default_factory=list)  # info : pistes de bones optionnels absents
 
     @property
     def warnings(self) -> int:
@@ -48,6 +49,7 @@ class ValidationReport:
             ("Bones non reconnus (info)", self.unknown_bones),
             ("Bones optionnels absents (info)", self.missing_optional),
             ("Bones non animés (info)", self.unanimated),
+            ("Pistes de bones optionnels ignorées (info)", self.ignored_tracks),
         ]
         parts = [f"{title} ({len(names)}) :\n  " + ", ".join(names) for title, names in sections if names]
         return "\n\n".join(parts) or "Aucun problème détecté."
@@ -56,10 +58,12 @@ class ValidationReport:
 def validate(bone_names: Iterable[str], track_names: Iterable[str] | None = None) -> ValidationReport:
     bones = set(bone_names)
     tracks = set(track_names) if track_names is not None else None
+    unmatched = tracks - bones if tracks is not None else set()
     return ValidationReport(
         missing_core=sorted(MIXAMO_CORE - bones),
-        unmatched_tracks=sorted(tracks - bones) if tracks is not None else [],
+        unmatched_tracks=sorted(unmatched - MIXAMO_OPTIONAL),
         unknown_bones=sorted(bones - MIXAMO_ALL),
         missing_optional=sorted(MIXAMO_OPTIONAL - bones),
         unanimated=sorted(bones - tracks) if tracks is not None else [],
+        ignored_tracks=sorted(unmatched & MIXAMO_OPTIONAL),
     )

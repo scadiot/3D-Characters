@@ -111,6 +111,14 @@ poses de repos coïncident en monde (T-pose Mixamo).
   exprimée dans l'espace du parent. Ceci gère les écarts d'unités cm/m fréquents
   avec Mixamo.
 - Même squelette des deux côtés : résultat identique à une copie des pistes locales.
+- Orientation : la direction vers laquelle regarde chaque rig au repos est déduite
+  de l'axe gauche → droite (UpLeg, Arm, Shoulder). Les variations source sont
+  exprimées dans le repère du modèle (rotation autour de Y de l'écart), et
+  l'affichage tourne chaque perso pour qu'il regarde +Z, vers la caméra.
+- Cadrage : boîte englobante calculée sur le mesh déformé par le squelette au repos
+  (les meshes peuvent être stockés en cm et Z vers le haut).
+- Vérification : une piste visant un bone optionnel absent du modèle (doigts, yeux,
+  `*_End`) est une info, pas un avertissement.
 - Échelles d'animation : ignorées.
 - Interpolation : `LINEAR` (lerp pour translation, slerp pour rotation) et `STEP`.
   `CUBICSPLINE` est échantillonné en ne gardant que les valeurs (sans tangentes).

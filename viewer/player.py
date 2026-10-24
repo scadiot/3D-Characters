@@ -5,6 +5,7 @@ import numpy as np
 
 from viewer.animation import AnimationClip, Retargeter, loop_time
 from viewer.gltf_loader import LoadedFile
+from viewer.skeleton import Pose, yaw_matrix
 
 
 @dataclass
@@ -21,6 +22,7 @@ class Player:
         self.speed = 1.0
         self.playing = True
         self._retargeter: Retargeter | None = None
+        self._facing = np.eye(4)  # tourne le perso pour qu'il regarde +Z (vers la caméra)
 
     @property
     def duration(self) -> float:
@@ -28,6 +30,7 @@ class Player:
 
     def set_model(self, model: LoadedFile | None) -> None:
         self.model = model
+        self._facing = yaw_matrix(-model.skeleton.facing_yaw()) if model else np.eye(4)
         self._update_retargeter()
 
     def set_clip(self, clip: AnimationClip | None) -> None:
@@ -52,8 +55,10 @@ class Player:
         if self.model is None:
             return None
         sk = self.model.skeleton
-        pose = self._retargeter.pose(self.time) if self._retargeter else sk.rest_pose()
-        g = sk.global_matrices(pose)
+        return self._frame(self._retargeter.pose(self.time) if self._retargeter else sk.rest_pose())
+
+    def _frame(self, pose: Pose) -> FrameData:
+        g = self._facing @ self.model.skeleton.global_matrices(pose)
         return FrameData(g, [g[s.joints] @ s.inverse_bind for s in self.model.skins])
 
     def bone_segments(self, frame: FrameData | None) -> np.ndarray:
@@ -69,12 +74,17 @@ class Player:
     def bounds(self) -> tuple[np.ndarray, np.ndarray]:
         if self.model is None or not self.model.meshes:
             return np.array([-1.0, 0, -1]), np.array([1.0, 2, 1])
-        g = self.model.skeleton.global_matrices(self.model.skeleton.rest_pose())
+        frame = self._frame(self.model.skeleton.rest_pose())
         points = []
         for m in self.model.meshes:
-            p = m.positions.astype(np.float64)
+            p = np.c_[m.positions.astype(np.float64), np.ones(len(m.positions))]
             if m.skin is None:
-                p = p @ g[m.node][:3, :3].T + g[m.node][:3, 3]
-            points.append(p)
+                points.append((p @ frame.globals[m.node].T)[:, :3])
+                continue
+            # Positions de bind déformées par le squelette au repos : gère les meshes
+            # stockés dans un autre repère (cm, Z vers le haut) que le monde.
+            weighted = m.weights.sum(axis=1) > 0
+            mats = np.einsum("vk,vkij->vij", m.weights[weighted], frame.joint_matrices[m.skin][m.joints[weighted]])
+            points.append(np.einsum("vij,vj->vi", mats, p[weighted])[:, :3])
         allp = np.concatenate(points)
         return allp.min(axis=0), allp.max(axis=0)

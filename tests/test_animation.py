@@ -96,3 +96,19 @@ def test_retarget_scales_hips_motion_by_height():
     model = _skeleton(IDENTITY, [0, 0.2, 0], IDENTITY, hips_y=2.0)
     gm = model.global_matrices(Retargeter(model, _clip(source)).pose(0))
     assert np.allclose(gm[0][:3, 3], [0, 3.0, 0])  # +0.5 côté source × (2 / 1)
+
+
+def test_retarget_compensates_opposite_facing():
+    # Même rig, mais le modèle regarde -Z (racine tournée de 180° sur Y).
+    from test_skeleton import _legs
+    source, model = _legs(0), _legs(np.pi)
+    lean = mu.axis_angle_quat([1, 0, 0], 0.5)  # la source se penche vers +Z (son avant)
+    one = np.array([0.0])
+    clip = AnimationClip("lean", 0.0, {"Spine": Track(one, np.array([lean]), "LINEAR")},
+                         {"Hips": Track(one, np.array([[0, 1, 0.5]]), "LINEAR")}, source)
+    gs = source.global_matrices(sample_pose(clip, 0))
+    gm = model.global_matrices(Retargeter(model, clip).pose(0))
+    flip = np.diag([-1.0, 1, -1])  # rotation de 180° sur Y
+    spine_dir = lambda g: g[1][:3, :3] @ [0, 1, 0]
+    assert np.allclose(spine_dir(gm), flip @ spine_dir(gs))  # se penche vers -Z, son avant à lui
+    assert np.allclose(gm[0][:3, 3], [0, 1, -0.5])           # avance vers son avant

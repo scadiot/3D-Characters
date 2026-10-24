@@ -36,3 +36,9 @@ def test_validate_fixtures(model_path, anim_path):
 
 def test_details_text():
     assert "Ghost" in validate({"Hips"}, {"Ghost"}).details()
+
+
+def test_tracks_of_missing_optional_bones_are_info_only():
+    r = validate({"Hips"}, {"Hips", "LeftEye", "LeftHandIndex4", "Ghost"})
+    assert r.unmatched_tracks == ["Ghost"]
+    assert r.ignored_tracks == ["LeftEye", "LeftHandIndex4"]

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from viewer.mathutil import mat3_to_quat, slerp, trs_to_mat4
-from viewer.skeleton import Pose, Skeleton
+from viewer.skeleton import Pose, Skeleton, yaw_matrix
 
 
 @dataclass
@@ -69,6 +69,8 @@ class Retargeter:
     Pour chaque bone apparié par nom, la variation de rotation monde par rapport à la
     T-pose source est appliquée à la T-pose du modèle : les axes locaux des deux rigs
     peuvent différer (export Blender, etc.) tant que leurs poses de repos coïncident.
+    Un écart d'orientation (perso regardant -Z au lieu de +Z) est compensé en exprimant
+    les variations source dans le repère du modèle.
     La position des Hips suit le déplacement source, mis à l'échelle de leur hauteur.
     """
 
@@ -84,6 +86,7 @@ class Retargeter:
         source_rest = source.global_matrices(source.rest_pose())
         self.model_rest_r = _rotations(model_rest)
         self.source_rest_r = _rotations(source_rest)
+        self.align = yaw_matrix(model.facing_yaw() - source.facing_yaw())[:3, :3]
         self.hips = model.index("Hips")
         self.source_hips = source.index("Hips") if "Hips" in clip.translations else None
         self.ratio = 1.0
@@ -106,12 +109,13 @@ class Retargeter:
             parent = globals_[p] if p >= 0 else np.eye(4)
             j = self.pairs.get(i)
             if j is not None:
-                target = source_r[j] @ self.source_rest_r[j].T @ self.model_rest_r[i]
+                delta = self.align @ source_r[j] @ self.source_rest_r[j].T @ self.align.T
+                target = delta @ self.model_rest_r[i]
                 parent_r = _rotations(parent)
                 pose.r[i] = mat3_to_quat(parent_r.T @ target)
             if i == self.hips and self.source_hips is not None:
                 offset = source_globals[self.source_hips][:3, 3] - self.source_hips_rest
-                world = np.append(self.model_hips_rest + offset * self.ratio, 1.0)
+                world = np.append(self.model_hips_rest + self.align @ offset * self.ratio, 1.0)
                 pose.t[i] = (np.linalg.inv(parent) @ world)[:3]
             globals_[i] = parent @ trs_to_mat4(pose.t[i:i + 1], pose.r[i:i + 1], pose.s[i:i + 1])[0]
         return pose
