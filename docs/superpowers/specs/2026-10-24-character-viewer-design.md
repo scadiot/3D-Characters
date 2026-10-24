@@ -46,13 +46,9 @@ normalisation/vérification Mixamo naturelle, et Qt offre une UI extensible.
     <anim>.glb
 ```
 
-- Un `.glb` posé à plat dans `<racine>/` ou `<racine>/Characters/` est aussi un personnage
-  (nom = nom du fichier, sans skins). Un dossier racine qui ne contient que de tels fichiers
-  ne génère pas de message « dossier introuvable ».
 - Liste des skins : « défaut » (texture embarquée dans le GLB) + chaque image de `skins/`.
-- Liste des animations : « aucune (T-pose) », puis les clips intégrés au GLB du personnage
-  sélectionné (libellés `<clip> (intégrée)`), puis chaque clip de `Animations/`. Un GLB
-  d'animation contenant plusieurs clips donne une entrée par clip, libellée `<fichier> / <clip>`.
+- Liste des animations : « aucune (T-pose) » + chaque clip trouvé. Un GLB contenant
+  plusieurs clips donne une entrée par clip, libellée `<fichier> / <clip>`.
 
 ## Architecture
 
