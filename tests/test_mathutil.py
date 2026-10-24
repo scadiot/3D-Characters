@@ -34,3 +34,9 @@ def test_trs_decompose_round_trip():
 def test_look_at_puts_target_on_negative_z():
     v = mu.look_at(np.array([0, 0, 5.0]), np.zeros(3), np.array([0, 1.0, 0]))
     assert np.allclose(v @ [0, 0, 0, 1], [0, 0, -5, 1])
+
+
+def test_orthographic_maps_box_to_ndc():
+    m = mu.orthographic(-1, 3, 0, 2, -5, 5)
+    assert np.allclose(m @ [-1, 0, 5, 1], [-1, -1, -1, 1])   # coin gauche-bas, le plus proche (+Z)
+    assert np.allclose(m @ [3, 2, -5, 1], [1, 1, 1, 1])

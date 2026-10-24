@@ -7,6 +7,7 @@ from viewer.gltf_loader import LoadedFile
 from viewer.player import FrameData
 
 MAX_BONES = 128
+BACKGROUND = (0.18, 0.19, 0.21, 1.0)
 
 MESH_VS = """
 #version 330
@@ -152,16 +153,18 @@ class Renderer:
             tex.release()
         self.skin_textures = {}
 
-    def render(self, fbo, view_proj: np.ndarray, frame: FrameData | None, bone_segments: np.ndarray | None) -> None:
+    def render(self, fbo, view_proj: np.ndarray, frame: FrameData | None, bone_segments: np.ndarray | None,
+               background: tuple[float, float, float, float] = BACKGROUND, grid: bool = True) -> None:
         fbo.use()
-        fbo.clear(0.18, 0.19, 0.21, 1.0, depth=1.0)
+        fbo.clear(*background, depth=1.0)
         self.ctx.enable(moderngl.DEPTH_TEST)
         self.ctx.disable(moderngl.CULL_FACE)
         vp = _gl_mat(view_proj)
 
         self.line_prog["u_view_proj"].write(vp)
-        self.line_prog["u_color"].value = (0.32, 0.33, 0.36)
-        self.grid_vao.render(moderngl.LINES)
+        if grid:
+            self.line_prog["u_color"].value = (0.32, 0.33, 0.36)
+            self.grid_vao.render(moderngl.LINES)
 
         if frame is not None:
             light = np.array([-0.4, -1.0, -0.6])

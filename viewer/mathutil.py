@@ -98,3 +98,14 @@ def look_at(eye, target, up) -> np.ndarray:
     m[0, :3], m[1, :3], m[2, :3] = s, u, -f
     m[0, 3], m[1, 3], m[2, 3] = -s @ eye, -u @ eye, f @ eye
     return m
+
+
+def orthographic(left: float, right: float, bottom: float, top: float, near: float, far: float) -> np.ndarray:
+    m = np.eye(4)
+    m[0, 0] = 2 / (right - left)
+    m[1, 1] = 2 / (top - bottom)
+    m[2, 2] = -2 / (far - near)
+    m[0, 3] = -(right + left) / (right - left)
+    m[1, 3] = -(top + bottom) / (top - bottom)
+    m[2, 3] = -(far + near) / (far - near)
+    return m
