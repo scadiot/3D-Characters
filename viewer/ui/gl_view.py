@@ -18,7 +18,7 @@ class GLView(QOpenGLWidget):
         self.show_bones = False
         self.ctx = None
         self.renderer: Renderer | None = None
-        self._skin_image = None
+        self._skin_images: dict[str, object] = {}
         self._last_pos = None
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self._clock = QElapsedTimer()
@@ -29,12 +29,17 @@ class GLView(QOpenGLWidget):
 
     # --- état poussé par la fenêtre principale ---
     def model_changed(self) -> None:
-        self._with_context(lambda: self.renderer.set_model(self.player.model))
+        self._skin_images = {}
+        self._with_context(lambda: (self.renderer.clear_skins(), self.renderer.set_model(self.player.model)))
         self.frame_all()
 
-    def set_skin(self, image) -> None:
-        self._skin_image = image
-        self._with_context(lambda: self.renderer.set_skin(image))
+    def set_skin(self, material: str, image) -> None:
+        """Remplace la texture base color d'un matériau (None : texture d'origine)."""
+        if image is None:
+            self._skin_images.pop(material, None)
+        else:
+            self._skin_images[material] = image
+        self._with_context(lambda: self.renderer.set_skin(material, image))
 
     def frame_all(self) -> None:
         self.camera.frame(*self.player.bounds())
@@ -55,7 +60,8 @@ class GLView(QOpenGLWidget):
         self.ctx = moderngl.create_context()
         self.renderer = Renderer(self.ctx)
         self.renderer.set_model(self.player.model)
-        self.renderer.set_skin(self._skin_image)
+        for material, image in self._skin_images.items():
+            self.renderer.set_skin(material, image)
 
     def paintGL(self) -> None:
         fbo = self.ctx.detect_framebuffer(self.defaultFramebufferObject())

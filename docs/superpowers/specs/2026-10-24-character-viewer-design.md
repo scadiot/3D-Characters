@@ -16,7 +16,7 @@ Inclus :
 - Bibliothèque de fichiers scannée depuis un dossier racine.
 - Formats : glTF binaire (`.glb`) uniquement, modèles et animations.
 - Animations dans des fichiers séparés, partagées entre tous les personnages.
-- Variantes de skin = remplacement de la texture base color.
+- Variantes de skin = remplacement de la texture base color, choisie par matériau.
 - Normalisation des préfixes de bones Mixamo + rapport de vérification.
 - Caméra orbitale, lecture/pause/vitesse/timeline, affichage optionnel des bones.
 
@@ -41,12 +41,18 @@ normalisation/vérification Mixamo naturelle, et Qt offre une UI extensible.
     <perso>/
       <perso>.glb          # le premier .glb du dossier si le nom diffère
       skins/               # optionnel
+        <matériau>/        # skins propres à ce matériau glTF
         <variante>.png|.jpg
   Animations/
     <anim>.glb
 ```
 
-- Liste des skins : « défaut » (texture embarquée dans le GLB) + chaque image de `skins/`.
+- Une liste de skins par matériau du modèle : « défaut » (texture embarquée) + les images
+  de `skins/<matériau>/` + les images posées directement dans `skins/` (communes à tous les
+  matériaux). Un matériau sans aucune image proposée n'a pas de liste.
+- Le nom de dossier correspond au nom du matériau, casse ignorée, les caractères interdits
+  par Windows (`<>:"/\|?*`) remplacés par `_` (ex. `asdf1:Beta` → `asdf1_Beta/`).
+- Un sous-dossier ne correspondant à aucun matériau est signalé en barre de statut.
 - Liste des animations : « aucune (T-pose) » + chaque clip trouvé. Un GLB contenant
   plusieurs clips donne une entrée par clip, libellée `<fichier> / <clip>`.
 
@@ -131,7 +137,7 @@ poses de repos coïncident en monde (T-pose Mixamo).
 │ 3D Characters Viewer                    [Dossier racine…]    │
 ├────────────────────┬─────────────────────────────────────────┤
 │ Personnage  [▾]    │                                         │
-│ Skin        [▾]    │              (vue 3D)                   │
+│ Skin · mat. [▾] ×N │              (vue 3D)                   │
 │ Animation   [▾]    │                                         │
 │ ▶ ⏸  Vitesse [1.0x]│                                         │
 │ ☐ Afficher bones   │                                         │
@@ -151,7 +157,7 @@ Lecture : lecture/pause, vitesse 0.25x–2x, timeline glissable (met en pause pe
 
 Vérification : résumé ✅/⚠ + compteur ; « détails… » ouvre une boîte listant le rapport de `validate()`.
 
-Persistance via `QSettings` : dossier racine, dernier personnage/skin/animation.
+Persistance via `QSettings` : dossier racine, dernier personnage, skin par matériau, animation.
 
 Rendu : fond neutre, grille au sol, une lumière directionnelle + ambiante,
 ombrage Lambert sur la texture base color. Bones optionnels dessinés en lignes

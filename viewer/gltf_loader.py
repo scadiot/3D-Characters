@@ -37,6 +37,7 @@ class MeshData:
     indices: np.ndarray    # (I,) uint32
     node: int
     skin: int | None
+    material: str | None    # nom du matériau glTF (clé des skins par matériau)
     base_color: np.ndarray  # (4,)
     texture: Image.Image | None
 
@@ -53,6 +54,10 @@ class LoadedFile:
     @property
     def skinned(self) -> bool:
         return any(m.skin is not None for m in self.meshes)
+
+    def materials(self) -> list[str]:
+        """Noms des matériaux utilisés, dans l'ordre d'apparition."""
+        return list(dict.fromkeys(m.material for m in self.meshes if m.material is not None))
 
     def joint_names(self) -> set[str]:
         return {self.skeleton.names[j] for s in self.skins for j in s.joints}
@@ -173,8 +178,11 @@ def _read_meshes(gltf, blob, base_dir: Path, infos: list[str]) -> list[MeshData]
             if getattr(a, "JOINTS_1", None) is not None:
                 infos.append(f"JOINTS_1/WEIGHTS_1 ignorés (nœud {node.name}) : 4 influences max")
             base_color, texture = _read_material(gltf, blob, prim.material, base_dir, infos)
+            material = None
+            if prim.material is not None:
+                material = gltf.materials[prim.material].name or f"material{prim.material}"
             result.append(MeshData(positions, normals, uvs, joints, weights, indices,
-                                   node_index, skin, base_color, texture))
+                                   node_index, skin, material, base_color, texture))
     return result
 
 

@@ -20,6 +20,7 @@ def test_model_skin_and_mesh(model_path):
     assert m.positions.shape == (4, 3) and m.indices.tolist() == [0, 1, 2, 0, 2, 3]
     assert m.joints.dtype == np.int32 and m.joints[:, 0].tolist() == [0, 0, 1, 1]
     assert m.skin == 0 and m.node == 3
+    assert m.material == "Skin"
     assert m.texture is not None and m.texture.size == (2, 2)
     assert f.clips == []
 

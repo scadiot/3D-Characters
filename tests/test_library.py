@@ -43,3 +43,20 @@ def test_multi_clip_labels(tmp_path, monkeypatch):
 def test_missing_folders(tmp_path):
     lib = scan(tmp_path)
     assert lib.characters == [] and lib.animations == [] and len(lib.messages) == 2
+
+
+def test_skins_per_material(tmp_path, model_path):
+    d = tmp_path / "Characters" / "soldat"
+    for sub in ("", "Body", "asdf1_Beta", "Orphan"):
+        (d / "skins" / sub).mkdir(parents=True, exist_ok=True)
+    shutil.copy(model_path, d / "soldat.glb")
+    for rel in ("commun.png", "Body/camo.png", "asdf1_Beta/rouge.jpg", "Orphan/x.png", "Body/notes.txt"):
+        (d / "skins" / rel).write_bytes(b"x")
+    entry = scan(tmp_path).characters[0]
+    names = lambda paths: [p.name for p in paths]
+    assert names(entry.skins) == ["commun.png"]
+    assert names(entry.skins_for("Body")) == ["camo.png", "commun.png"]
+    assert names(entry.skins_for("body")) == ["camo.png", "commun.png"]       # casse ignorée
+    assert names(entry.skins_for("asdf1:Beta")) == ["rouge.jpg", "commun.png"]  # ':' interdit sous Windows
+    assert names(entry.skins_for("Visor")) == ["commun.png"]
+    assert entry.unmatched_folders(["Body", "asdf1:Beta"]) == ["Orphan"]

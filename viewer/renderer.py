@@ -72,9 +72,9 @@ def _gl_mats(ms: np.ndarray) -> bytes:
 
 
 class _GpuMesh:
-    def __init__(self, vao, buffers, texture, base_color, skin, node):
+    def __init__(self, vao, buffers, texture, base_color, skin, node, material):
         self.vao, self.buffers, self.texture = vao, buffers, texture
-        self.base_color, self.skin, self.node = base_color, skin, node
+        self.base_color, self.skin, self.node, self.material = base_color, skin, node, material
 
     def release(self):
         self.vao.release()
@@ -93,8 +93,7 @@ class Renderer:
         self.bones_ubo = ctx.buffer(reserve=MAX_BONES * 64)
         self.white = ctx.texture((1, 1), 4, b"\xff\xff\xff\xff")
         self.meshes: list[_GpuMesh] = []
-        self.skin_texture = None
-        self._any_textured = False
+        self.skin_textures: dict[str, moderngl.Texture] = {}  # matériau -> skin choisie
         grid = self._grid_vertices()
         self.grid_vbo = ctx.buffer(grid.tobytes())
         self.grid_vao = ctx.vertex_array(self.line_prog, [(self.grid_vbo, "3f", "in_position")])
@@ -139,13 +138,19 @@ class Renderer:
             ], index_buffer=index, index_element_size=4)
             texture = self._texture(m.texture) if m.texture is not None else None
             self.meshes.append(_GpuMesh(vao, buffers + [index], texture,
-                                        tuple(float(x) for x in m.base_color), m.skin, m.node))
-        self._any_textured = any(m.texture is not None for m in self.meshes)
+                                        tuple(float(x) for x in m.base_color), m.skin, m.node, m.material))
 
-    def set_skin(self, image: Image.Image | None) -> None:
-        if self.skin_texture:
-            self.skin_texture.release()
-        self.skin_texture = self._texture(image) if image is not None else None
+    def set_skin(self, material: str, image: Image.Image | None) -> None:
+        old = self.skin_textures.pop(material, None)
+        if old:
+            old.release()
+        if image is not None:
+            self.skin_textures[material] = self._texture(image)
+
+    def clear_skins(self) -> None:
+        for tex in self.skin_textures.values():
+            tex.release()
+        self.skin_textures = {}
 
     def render(self, fbo, view_proj: np.ndarray, frame: FrameData | None, bone_segments: np.ndarray | None) -> None:
         fbo.use()
@@ -172,8 +177,7 @@ class Renderer:
                 else:
                     self.mesh_prog["u_skinned"].value = 0
                     self.mesh_prog["u_model"].write(_gl_mat(frame.globals[m.node]))
-                use_skin = self.skin_texture is not None and (m.texture is not None or not self._any_textured)
-                (self.skin_texture if use_skin else (m.texture or self.white)).use(0)
+                (self.skin_textures.get(m.material) or m.texture or self.white).use(0)
                 self.mesh_prog["u_base_color"].value = m.base_color
                 m.vao.render(moderngl.TRIANGLES)
 

@@ -1,4 +1,5 @@
 """Fenêtre principale : sélection perso / skin / animation, lecture, vérification."""
+import json
 from pathlib import Path
 
 from PIL import Image
@@ -33,7 +34,10 @@ class MainWindow(QMainWindow):
 
         self.view = GLView(self.player)
         self.character_combo = QComboBox()
-        self.skin_combo = QComboBox()
+        self.skin_combos: dict[str, QComboBox] = {}  # matériau -> liste de skins
+        self._skin_paths: dict[str, list[Path]] = {}
+        self.skins_layout = QVBoxLayout()
+        self.skins_layout.setContentsMargins(0, 0, 0, 0)
         self.anim_combo = QComboBox()
         self.play_button = QPushButton("⏸")
         self.speed_combo = QComboBox()
@@ -61,10 +65,13 @@ class MainWindow(QMainWindow):
         open_action.triggered.connect(self._choose_root)
 
         side = QVBoxLayout()
-        for title, combo in (("Personnage", self.character_combo), ("Skin", self.skin_combo),
-                             ("Animation", self.anim_combo)):
-            side.addWidget(QLabel(title))
-            side.addWidget(combo)
+        side.addWidget(QLabel("Personnage"))
+        side.addWidget(self.character_combo)
+        skins_widget = QWidget()
+        skins_widget.setLayout(self.skins_layout)
+        side.addWidget(skins_widget)
+        side.addWidget(QLabel("Animation"))
+        side.addWidget(self.anim_combo)
         playback = QHBoxLayout()
         playback.addWidget(self.play_button)
         playback.addWidget(QLabel("Vitesse"))
@@ -96,7 +103,6 @@ class MainWindow(QMainWindow):
 
     def _connect(self) -> None:
         self.character_combo.currentIndexChanged.connect(self._on_character)
-        self.skin_combo.currentIndexChanged.connect(self._on_skin)
         self.anim_combo.currentIndexChanged.connect(self._on_animation)
         self.play_button.clicked.connect(self._toggle_play)
         self.speed_combo.currentIndexChanged.connect(lambda i: setattr(self.player, "speed", SPEEDS[i]))
@@ -133,14 +139,21 @@ class MainWindow(QMainWindow):
         self.character_combo.addItems([c.name for c in self.library.characters])
         self.character_combo.blockSignals(False)
 
+        saved_skins = {}
         if restore:
             self._select_text(self.character_combo, self.settings.value("character"))
             self._select_text(self.anim_combo, self.settings.value("animation"))
+            try:
+                saved_skins = json.loads(self.settings.value("skins") or "{}")
+            except ValueError:
+                pass
         self._on_character(self.character_combo.currentIndex())
         self._on_animation(self.anim_combo.currentIndex())
-        if restore:
-            self._select_text(self.skin_combo, self.settings.value("skin"))
-            self._on_skin(self.skin_combo.currentIndex())
+        for material, stem in saved_skins.items():
+            combo = self.skin_combos.get(material)
+            if combo is not None:
+                self._select_text(combo, stem)
+                self._on_skin(material, combo.currentIndex())
 
     @staticmethod
     def _select_text(combo: QComboBox, text) -> None:
@@ -154,8 +167,7 @@ class MainWindow(QMainWindow):
     # --- sélection ---
     def _on_character(self, index: int) -> None:
         model = None
-        self.skin_combo.blockSignals(True)
-        self.skin_combo.clear()
+        entry = None
         if 0 <= index < len(self.library.characters):
             entry = self.library.characters[index]
             try:
@@ -164,35 +176,63 @@ class MainWindow(QMainWindow):
                 self.statusBar().showMessage(str(e), 8000)
                 self.character_combo.setItemText(index, f"⚠ {entry.name}")
             else:
-                self.skin_combo.addItem("défaut")
-                self.skin_combo.addItems([p.stem for p in entry.skins])
                 self.settings.setValue("character", entry.name)
                 for info in model.infos:
                     self.statusBar().showMessage(info, 8000)
                 if any(len(s.joints) > MAX_BONES for s in model.skins):
                     self.statusBar().showMessage(f"Plus de {MAX_BONES} bones : squelette tronqué", 8000)
-        self.skin_combo.blockSignals(False)
         self.player.set_model(model)
-        self.view.set_skin(None)
         self.view.model_changed()
+        self._rebuild_skins(entry if model else None, model)
         self.anim_combo.setEnabled(model is not None and model.skinned)
         self._update_validation()
 
-    def _on_skin(self, index: int) -> None:
-        entry = self._current_character()
-        if entry is None or index <= 0:
-            self.view.set_skin(None)
-            self.settings.setValue("skin", "défaut")
+    def _rebuild_skins(self, entry, model: LoadedFile | None) -> None:
+        """Une liste de skins par matériau du modèle ayant au moins une image proposée."""
+        while self.skins_layout.count():
+            self.skins_layout.takeAt(0).widget().deleteLater()
+        self.skin_combos, self._skin_paths = {}, {}
+        materials = model.materials() if model else []
+        for material in materials:
+            paths = entry.skins_for(material)
+            if not paths:
+                continue
+            combo = QComboBox()
+            combo.addItem("défaut")
+            combo.addItems([p.stem for p in paths])
+            combo.currentIndexChanged.connect(lambda i, m=material: self._on_skin(m, i))
+            label = QLabel(f"Skin · {material}")
+            label.setWordWrap(True)
+            self.skins_layout.addWidget(label)
+            self.skins_layout.addWidget(combo)
+            self.skin_combos[material], self._skin_paths[material] = combo, paths
+        if not self.skin_combos:
+            self.skins_layout.addWidget(QLabel("Skin : aucune variante"))
+        if entry is not None:
+            orphans = entry.unmatched_folders(materials)
+            if orphans:
+                self.statusBar().showMessage(
+                    f"skins/ : aucun matériau nommé {', '.join(orphans)} (matériaux : {', '.join(materials)})", 10000)
+        self._save_skins()
+
+    def _on_skin(self, material: str, index: int) -> None:
+        if index <= 0:
+            self.view.set_skin(material, None)
+            self._save_skins()
             return
-        path = entry.skins[index - 1]
+        path = self._skin_paths[material][index - 1]
         try:
             image = Image.open(path).convert("RGBA")
         except Exception as e:
             self.statusBar().showMessage(f"Skin illisible : {path.name} ({e})", 8000)
-            self.skin_combo.setCurrentIndex(0)
+            self.skin_combos[material].setCurrentIndex(0)
             return
-        self.view.set_skin(image)
-        self.settings.setValue("skin", path.stem)
+        self.view.set_skin(material, image)
+        self._save_skins()
+
+    def _save_skins(self) -> None:
+        chosen = {m: c.currentText() for m, c in self.skin_combos.items() if c.currentIndex() > 0}
+        self.settings.setValue("skins", json.dumps(chosen))
 
     def _on_animation(self, index: int) -> None:
         clip = None
@@ -210,10 +250,6 @@ class MainWindow(QMainWindow):
         self.settings.setValue("animation", self.anim_combo.itemText(index))
         self.player.set_clip(clip)
         self._update_validation()
-
-    def _current_character(self):
-        i = self.character_combo.currentIndex()
-        return self.library.characters[i] if 0 <= i < len(self.library.characters) else None
 
     # --- lecture ---
     def _toggle_play(self) -> None:
