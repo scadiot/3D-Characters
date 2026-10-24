@@ -6,10 +6,15 @@ ANGLES = {name: 45 * i for i, name in enumerate(ORIENTATIONS)}  # S = face camé
 MARGIN = 4  # pixels laissés vides en haut et en bas de chaque frame
 
 
-def frame_times(duration: float, fps: int) -> list[float]:
-    """Temps des frames ; la dernière image d'une boucle (identique à la première) est omise."""
-    count = max(1, round(duration * fps))
-    return [i / fps for i in range(count)]
+def frame_times(duration: float, count: int) -> list[float]:
+    """`count` temps répartis uniformément sur la durée ; la fin de la boucle (identique au début)
+    est omise, une seule frame donne la pose à t = 0."""
+    return [i * duration / count for i in range(count)]
+
+
+def playback_fps(duration: float, count: int) -> float:
+    """Cadence à laquelle jouer `count` frames pour respecter la durée de l'animation."""
+    return round(count / duration, 3) if duration > 0 else 0
 
 
 @dataclass

@@ -12,7 +12,7 @@ from viewer.mathutil import orthographic
 from viewer.player import frame_from_globals, skinned_points
 from viewer.skeleton import yaw_matrix
 from viewer.sprites.config import AnimationExport, ExportConfig
-from viewer.sprites.layout import ANGLES, MARGIN, build_json, compute_scale, frame_times, pack
+from viewer.sprites.layout import ANGLES, MARGIN, build_json, compute_scale, frame_times, pack, playback_fps
 from viewer.sprites.render import SpriteRenderer
 
 SUPERSAMPLING = 2
@@ -41,7 +41,7 @@ def export_spritesheet(sprites: SpriteRenderer, model: LoadedFile, jobs: list[Ex
     sk = model.skeleton
     facing = yaw_matrix(-sk.facing_yaw())
     height = config.frame_height
-    plans = [(job, Retargeter(sk, job.clip, in_place=True), frame_times(job.clip.duration, job.export.fps))
+    plans = [(job, Retargeter(sk, job.clip, in_place=True), frame_times(job.clip.duration, job.export.frames))
              for job in jobs]
     total = sum(len(times) * (1 + len(job.export.orientations)) for job, _, times in plans)
     done = 0
@@ -96,7 +96,8 @@ def export_spritesheet(sprites: SpriteRenderer, model: LoadedFile, jobs: list[Ex
                 tick()
             sequences.append(sequence)
             crops.append(images)
-            entries.append({"name": job.export.name, "orientation": orientation, "fps": job.export.fps})
+            entries.append({"name": job.export.name, "orientation": orientation,
+                            "fps": playback_fps(job.clip.duration, job.export.frames)})
 
     placed, sheet_height = pack(sequences, config.sheet_width, height)
     sheet = Image.new("RGBA", (config.sheet_width, max(sheet_height, 1)), (0, 0, 0, 0))

@@ -6,11 +6,11 @@ from PySide6.QtWidgets import (
 )
 
 from viewer.sprites.config import (
-    FPS_RANGE, FRAME_HEIGHT_RANGE, SHEET_WIDTH_RANGE, AnimationExport, ExportConfig,
+    FRAMES_RANGE, FRAME_HEIGHT_RANGE, SHEET_WIDTH_RANGE, AnimationExport, ExportConfig,
 )
 from viewer.sprites.layout import ORIENTATIONS
 
-COL_NAME, COL_EXPORT, COL_FPS = 0, 1, 2
+COL_NAME, COL_EXPORT, COL_FRAMES = 0, 1, 2
 COL_FIRST_ORIENTATION = 3
 
 
@@ -44,7 +44,7 @@ class ExportDialog(QDialog):
 
         existing = {a.name: a for a in config.animations}
         self.table = QTableWidget(len(animation_labels), COL_FIRST_ORIENTATION + len(ORIENTATIONS))
-        self.table.setHorizontalHeaderLabels(["Animation", "Exporter", "FPS", *ORIENTATIONS])
+        self.table.setHorizontalHeaderLabels(["Animation", "Exporter", "Frames", *ORIENTATIONS])
         self.table.verticalHeader().setVisible(False)
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(COL_NAME, QHeaderView.ResizeMode.Stretch)
@@ -59,9 +59,10 @@ class ExportDialog(QDialog):
             self.table.setItem(row, COL_NAME, name)
             export_box = QCheckBox()
             export_box.setChecked(current is not None and bool(current.orientations))
-            fps = QSpinBox()
-            fps.setRange(*FPS_RANGE)
-            fps.setValue(current.fps if current else 12)
+            frames = QSpinBox()
+            frames.setRange(*FRAMES_RANGE)
+            frames.setToolTip("Nombre d'images exportées, réparties sur la durée de l'animation")
+            frames.setValue(current.frames if current else 8)
             boxes = []
             for i, orientation in enumerate(ORIENTATIONS):
                 box = QCheckBox()
@@ -73,8 +74,8 @@ class ExportDialog(QDialog):
             export_box.toggled.connect(lambda on, b=boxes: on and not any(x.isChecked() for x in b)
                                        and b[0].setChecked(True))
             self.table.setCellWidget(row, COL_EXPORT, _centered(export_box))
-            self.table.setCellWidget(row, COL_FPS, fps)
-            self.rows.append((export_box, fps, boxes))
+            self.table.setCellWidget(row, COL_FRAMES, frames)
+            self.rows.append((export_box, frames, boxes))
 
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         buttons.accepted.connect(self.accept)
@@ -87,8 +88,8 @@ class ExportDialog(QDialog):
 
     def result_config(self) -> ExportConfig:
         animations = []
-        for label, (export_box, fps, boxes) in zip(self.labels, self.rows):
+        for label, (export_box, frames, boxes) in zip(self.labels, self.rows):
             orientations = [o for o, box in zip(ORIENTATIONS, boxes) if box.isChecked()]
             if export_box.isChecked() and orientations:
-                animations.append(AnimationExport(label, fps.value(), orientations))
+                animations.append(AnimationExport(label, frames.value(), orientations))
         return ExportConfig(self.width_spin.value(), self.height_spin.value(), animations)

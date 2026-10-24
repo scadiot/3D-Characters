@@ -7,13 +7,13 @@ from viewer.sprites.layout import ORIENTATIONS
 
 SHEET_WIDTH_RANGE = (64, 16384)
 FRAME_HEIGHT_RANGE = (16, 2048)
-FPS_RANGE = (1, 60)
+FRAMES_RANGE = (1, 240)
 
 
 @dataclass
 class AnimationExport:
     name: str
-    fps: int = 12
+    frames: int = 8  # nombre d'images exportées
     orientations: list[str] = field(default_factory=lambda: ["S"])
 
 
@@ -45,7 +45,8 @@ def load_config(path: Path) -> tuple[ExportConfig, str | None]:
             wanted = set(a.get("orientations", []))
             animations.append(AnimationExport(
                 str(a["name"]),
-                _clamp(a.get("fps", 12), FPS_RANGE, 12),
+                # « fps » : ancienne clé, sa valeur est reprise comme nombre de frames
+                _clamp(a.get("frames", a.get("fps", 8)), FRAMES_RANGE, 8),
                 [o for o in ORIENTATIONS if o in wanted],
             ))
         return ExportConfig(
@@ -61,6 +62,7 @@ def save_config(path: Path, config: ExportConfig) -> None:
     data = {
         "sheetWidth": config.sheet_width,
         "frameHeight": config.frame_height,
-        "animations": [{"name": a.name, "fps": a.fps, "orientations": a.orientations} for a in config.animations],
+        "animations": [{"name": a.name, "frames": a.frames, "orientations": a.orientations}
+                       for a in config.animations],
     }
     Path(path).write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")

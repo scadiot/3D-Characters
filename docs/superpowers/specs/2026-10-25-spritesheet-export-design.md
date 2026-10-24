@@ -14,7 +14,7 @@ fichier JSON décrivant chaque frame, pour une utilisation dans un jeu 2D.
 Inclus :
 - Bouton « Exporter sprite sheet… » et bouton « ⚙ Config export… » (popup).
 - Configuration par personnage : largeur de feuille, hauteur de frame, et pour chaque
-  animation de la bibliothèque : exportée ou non, fps, orientations (8 directions).
+  animation de la bibliothèque : exportée ou non, nombre de frames, orientations (8 directions).
 - PNG à fond transparent, frames rognées au contenu, JSON des frames avec origine au sol.
 
 Exclu (YAGNI) : caméra en plongée / isométrique, perspective, espacement (padding) entre
@@ -62,6 +62,8 @@ Même chemin que le PNG, extension `.json` :
 - `name` : libellé de l'animation dans la bibliothèque (ex. `walk`, `pack / Idle`).
 - `x`, `y` : pixel en haut à gauche de la frame dans l'image ; `width`, `height` : taille.
 - `origin` : point au sol sous le personnage, **relatif au coin haut-gauche de la frame**.
+- `fps` : cadence de lecture qui respecte la durée de l'animation, `frames / durée`
+  arrondi à 3 décimales (0 pour une animation de durée nulle).
 - Une entrée par couple (animation, orientation).
 
 ### Orientations
@@ -106,10 +108,10 @@ Direction regardée : `(sin a, 0, cos a)` dans le repère monde de la vue (camé
 
 ## Cadence
 
-- `fps` par animation, défaut 12, de 1 à 60.
-- Nombre de frames `n = max(1, round(durée × fps))`, temps `tᵢ = i / fps` pour `i < n`
-  (la dernière image, identique à la première d'une boucle, est omise).
-- Animation de durée nulle : une frame à t = 0.
+- Nombre de frames `n` configuré par animation, défaut 8, de 1 à 240.
+- Temps `tᵢ = i × durée / n` pour `i < n` : répartis uniformément, la fin de la boucle
+  (identique au début) est omise ; `n = 1` donne la pose à t = 0.
+- Animation de durée nulle : `n` frames identiques à t = 0.
 
 ## Configuration
 
@@ -120,12 +122,13 @@ Fichier `Characters/<perso>/spritesheet.json` :
   "sheetWidth": 1000,
   "frameHeight": 250,
   "animations": [
-    { "name": "walk", "fps": 12, "orientations": ["S", "E", "N", "O"] }
+    { "name": "walk", "frames": 8, "orientations": ["S", "E", "N", "O"] }
   ]
 }
 ```
 
 - Une animation absente de la liste n'est pas exportée.
+- Ancienne clé `fps` (premières versions) : sa valeur est reprise comme nombre de frames.
 - Une animation de la config absente de la bibliothèque est ignorée (et conservée dans le
   fichier tant que la popup n'est pas validée).
 - Fichier absent ou illisible : config par défaut (1000, 250, aucune animation), message en
@@ -139,7 +142,7 @@ Fichier `Characters/<perso>/spritesheet.json` :
 - Popup de configuration (modale) :
   - champs « Largeur de la feuille » et « Hauteur des frames » ;
   - tableau, une ligne par animation de la bibliothèque (hors animations en erreur) :
-    case « Exporter », fps (spinbox), 8 cases S…SO ;
+    case « Exporter », nombre de frames (spinbox), 8 cases S…SO ;
   - cocher « Exporter » sans orientation coche S par défaut ;
   - OK enregistre `spritesheet.json`, Annuler ne change rien.
 - Export :

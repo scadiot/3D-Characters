@@ -5,12 +5,12 @@ from viewer.sprites.config import AnimationExport, ExportConfig, load_config, sa
 
 def test_round_trip(tmp_path):
     path = tmp_path / "spritesheet.json"
-    cfg = ExportConfig(800, 200, [AnimationExport("walk", 10, ["S", "E"]), AnimationExport("pack / Idle", 24, ["N"])])
+    cfg = ExportConfig(800, 200, [AnimationExport("walk", 10, ["S", "E"]), AnimationExport("pack / Idle", 1, ["N"])])
     save_config(path, cfg)
     loaded, error = load_config(path)
     assert error is None and loaded == cfg
     saved = json.loads(path.read_text(encoding="utf-8"))
-    assert saved["animations"][0] == {"name": "walk", "fps": 10, "orientations": ["S", "E"]}
+    assert saved["animations"][0] == {"name": "walk", "frames": 10, "orientations": ["S", "E"]}
 
 
 def test_missing_file_gives_defaults(tmp_path):
@@ -30,9 +30,16 @@ def test_values_are_cleaned(tmp_path):
     path = tmp_path / "spritesheet.json"
     path.write_text(json.dumps({
         "sheetWidth": 10, "frameHeight": 99999,
-        "animations": [{"name": "walk", "fps": 500, "orientations": ["O", "X", "S", "S"]}, {"fps": 3}],
+        "animations": [{"name": "walk", "frames": 500, "orientations": ["O", "X", "S", "S"]}, {"frames": 3}],
     }), encoding="utf-8")
     cfg, error = load_config(path)
     assert error is None
     assert (cfg.sheet_width, cfg.frame_height) == (64, 2048)
-    assert cfg.animations == [AnimationExport("walk", 60, ["S", "O"])]
+    assert cfg.animations == [AnimationExport("walk", 240, ["S", "O"])]
+
+
+def test_legacy_fps_key_is_read_as_frame_count(tmp_path):
+    path = tmp_path / "spritesheet.json"
+    path.write_text(json.dumps({"animations": [{"name": "idle", "fps": 1, "orientations": ["S"]}]}), encoding="utf-8")
+    cfg, _ = load_config(path)
+    assert cfg.animations == [AnimationExport("idle", 1, ["S"])]

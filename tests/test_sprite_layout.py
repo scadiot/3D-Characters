@@ -1,6 +1,8 @@
 import pytest
 
-from viewer.sprites.layout import ANGLES, MARGIN, ORIENTATIONS, Placed, build_json, compute_scale, frame_times, pack
+from viewer.sprites.layout import (
+    ANGLES, MARGIN, ORIENTATIONS, Placed, build_json, compute_scale, frame_times, pack, playback_fps,
+)
 
 
 def test_orientations_and_angles():
@@ -8,14 +10,20 @@ def test_orientations_and_angles():
     assert [ANGLES[o] for o in ORIENTATIONS] == [0, 45, 90, 135, 180, 225, 270, 315]
 
 
-@pytest.mark.parametrize("duration,fps,expected", [
+@pytest.mark.parametrize("duration,count,expected", [
     (1.0, 4, [0, 0.25, 0.5, 0.75]),
-    (0.0, 12, [0.0]),
-    (0.01, 12, [0.0]),  # round(0.12) = 0 -> au moins une frame
-    (1.04, 10, [i / 10 for i in range(10)]),
+    (2.5, 1, [0.0]),
+    (2.5, 2, [0.0, 1.25]),
+    (0.0, 3, [0.0, 0.0, 0.0]),
 ])
-def test_frame_times(duration, fps, expected):
-    assert frame_times(duration, fps) == pytest.approx(expected)
+def test_frame_times(duration, count, expected):
+    assert frame_times(duration, count) == pytest.approx(expected)
+
+
+def test_playback_fps():
+    assert playback_fps(2.5, 1) == pytest.approx(0.4)
+    assert playback_fps(0.7, 8) == pytest.approx(11.429)
+    assert playback_fps(0.0, 3) == 0
 
 
 def test_compute_scale():
