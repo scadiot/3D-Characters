@@ -1,12 +1,14 @@
 """Fenêtre principale : sélection perso / skin / animation, lecture, vérification."""
 import json
+import math
 from pathlib import Path
 
 from PIL import Image
 from PySide6.QtCore import QSettings, Qt
+from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import (
-    QCheckBox, QComboBox, QFileDialog, QHBoxLayout, QLabel, QMainWindow, QMessageBox,
-    QPushButton, QSlider, QVBoxLayout, QWidget,
+    QApplication, QCheckBox, QComboBox, QFileDialog, QHBoxLayout, QLabel, QMainWindow, QMessageBox,
+    QProgressDialog, QPushButton, QSlider, QVBoxLayout, QWidget,
 )
 
 from viewer.gltf_loader import LoadedFile, LoadError, load_glb
@@ -14,6 +16,10 @@ from viewer.library import Library, scan
 from viewer.mixamo import ValidationReport, validate
 from viewer.player import Player
 from viewer.renderer import MAX_BONES
+from viewer.sprites.config import load_config, save_config
+from viewer.sprites.export import ExportCancelled, ExportJob, export_spritesheet
+from viewer.sprites.render import SpriteRenderer
+from viewer.ui.export_dialog import ExportDialog
 from viewer.ui.gl_view import GLView
 
 SPEEDS = [0.25, 0.5, 1.0, 1.5, 2.0]
@@ -31,6 +37,7 @@ class MainWindow(QMainWindow):
         self._anim_cache: dict[Path, LoadedFile] = {}
         self._report: ValidationReport | None = None
         self._was_playing = True
+        self._current_entry = None
 
         self.view = GLView(self.player)
         self.character_combo = QComboBox()
@@ -44,6 +51,8 @@ class MainWindow(QMainWindow):
         self.speed_combo.addItems([f"{s}x" for s in SPEEDS])
         self.speed_combo.setCurrentIndex(SPEEDS.index(1.0))
         self.bones_check = QCheckBox("Afficher bones")
+        self.export_button = QPushButton("Exporter sprite sheet…")
+        self.export_config_button = QPushButton("⚙ Config export…")
         self.validation_label = QLabel()
         self.validation_label.setWordWrap(True)
         self.details_button = QPushButton("détails…")
@@ -77,6 +86,8 @@ class MainWindow(QMainWindow):
         playback.addWidget(QLabel("Vitesse"))
         playback.addWidget(self.speed_combo)
         side.addLayout(playback)
+        side.addWidget(self.export_button)
+        side.addWidget(self.export_config_button)
         side.addWidget(self.bones_check)
         side.addSpacing(12)
         side.addWidget(QLabel("Vérification"))
@@ -108,6 +119,8 @@ class MainWindow(QMainWindow):
         self.speed_combo.currentIndexChanged.connect(lambda i: setattr(self.player, "speed", SPEEDS[i]))
         self.bones_check.toggled.connect(lambda on: setattr(self.view, "show_bones", on))
         self.details_button.clicked.connect(self._show_details)
+        self.export_button.clicked.connect(self._export_spritesheet)
+        self.export_config_button.clicked.connect(self._edit_export_config)
         self.timeline.sliderPressed.connect(self._timeline_pressed)
         self.timeline.sliderMoved.connect(self._timeline_moved)
         self.timeline.sliderReleased.connect(self._timeline_released)
@@ -185,6 +198,9 @@ class MainWindow(QMainWindow):
         self.view.model_changed()
         self._rebuild_skins(entry if model else None, model)
         self.anim_combo.setEnabled(model is not None and model.skinned)
+        self._current_entry = entry if model else None
+        for button in (self.export_button, self.export_config_button):
+            button.setEnabled(model is not None and model.skinned)
         self._update_validation()
 
     def _rebuild_skins(self, entry, model: LoadedFile | None) -> None:
@@ -250,6 +266,116 @@ class MainWindow(QMainWindow):
         self.settings.setValue("animation", self.anim_combo.itemText(index))
         self.player.set_clip(clip)
         self._update_validation()
+
+    # --- export de sprite sheet ---
+    def _export_config_path(self) -> Path:
+        return self._current_entry.model_path.parent / "spritesheet.json"
+
+    def _load_export_config(self):
+        config, error = load_config(self._export_config_path())
+        if error:
+            self.statusBar().showMessage(error, 8000)
+        return config
+
+    def _edit_export_config(self) -> None:
+        if self._current_entry is None:
+            return
+        labels = [a.label for a in self.library.animations if not a.error]
+        dialog = ExportDialog(self._load_export_config(), labels, self._current_entry.name, self)
+        if dialog.exec():
+            try:
+                save_config(self._export_config_path(), dialog.result_config())
+            except OSError as e:
+                QMessageBox.critical(self, "Config export", f"Écriture impossible : {e}")
+                return
+            self.statusBar().showMessage(f"Config enregistrée : {self._export_config_path()}", 8000)
+
+    def _load_clip(self, entry):
+        if entry.path not in self._anim_cache:
+            self._anim_cache[entry.path] = load_glb(entry.path)
+        return self._anim_cache[entry.path].clips[entry.clip_index]
+
+    def _export_jobs(self, config) -> tuple[list[ExportJob], list[str]]:
+        entries = {a.label: a for a in self.library.animations if not a.error}
+        jobs, skipped = [], []
+        for anim in config.animations:
+            if not anim.orientations:
+                continue
+            entry = entries.get(anim.name)
+            try:
+                if entry is None:
+                    raise LoadError(anim.name)
+                jobs.append(ExportJob(anim, self._load_clip(entry)))
+            except LoadError:
+                skipped.append(anim.name)
+        return jobs, skipped
+
+    def _export_spritesheet(self) -> None:
+        model, character = self.player.model, self._current_entry
+        if model is None or character is None:
+            return
+        config = self._load_export_config()
+        jobs, skipped = self._export_jobs(config)
+        if not jobs:
+            QMessageBox.information(self, "Export sprite sheet",
+                                    "Aucune animation à exporter : coche des animations et des orientations "
+                                    "dans « ⚙ Config export… ».")
+            return
+
+        exports_dir = self.root / "Exports"
+        exports_dir.mkdir(exist_ok=True)
+        path, _ = QFileDialog.getSaveFileName(self, "Exporter la sprite sheet",
+                                              str(exports_dir / f"{character.name}.png"), "Image PNG (*.png)")
+        if not path:
+            return
+        self.export_to(Path(path).with_suffix(".png"), config, jobs, skipped)
+
+    def export_to(self, png: Path, config, jobs: list[ExportJob], skipped: list[str]) -> bool:
+        progress = QProgressDialog("Rendu des frames…", "Annuler", 0, 100, self)
+        progress.setWindowTitle("Export sprite sheet")
+        progress.setWindowModality(Qt.WindowModality.WindowModal)
+        progress.setMinimumDuration(0)
+        model = self.player.model
+
+        def on_progress(done: int, total: int) -> bool:
+            progress.setValue(math.floor(done * 100 / max(total, 1)))
+            QApplication.processEvents()
+            self.view.makeCurrent()  # un rafraîchissement de la vue a pu changer de contexte
+            return not progress.wasCanceled()
+
+        def run(ctx, renderer):
+            sprites = SpriteRenderer(ctx, renderer)
+            try:
+                return export_spritesheet(sprites, model, jobs, config, png.name, on_progress)
+            finally:
+                sprites.release()
+
+        QGuiApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+        try:
+            result = self.view.run_in_context(run)
+        except ExportCancelled:
+            self.statusBar().showMessage("Export annulé", 8000)
+            return False
+        except ValueError as e:
+            QMessageBox.warning(self, "Export sprite sheet",
+                                f"{e}.\nAugmente la largeur de la feuille dans « ⚙ Config export… ».")
+            return False
+        finally:
+            QGuiApplication.restoreOverrideCursor()
+            progress.close()
+
+        try:
+            result.image.save(png)
+            png.with_suffix(".json").write_text(json.dumps(result.data, indent=2, ensure_ascii=False) + "\n",
+                                                encoding="utf-8")
+        except OSError as e:
+            QMessageBox.critical(self, "Export sprite sheet", f"Écriture impossible ({png}) : {e}")
+            return False
+        message = f"Exporté : {png} — {result.frame_count} frames, {result.image.width}×{result.image.height} px"
+        if skipped:
+            message += f" — ignorées : {', '.join(skipped)}"
+        self.statusBar().showMessage(message, 15000)
+        return True
 
     # --- lecture ---
     def _toggle_play(self) -> None:

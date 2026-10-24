@@ -45,6 +45,18 @@ class GLView(QOpenGLWidget):
         self.camera.frame(*self.player.bounds())
         self.update()
 
+    def run_in_context(self, fn):
+        """Exécute `fn(ctx, renderer)` avec le contexte OpenGL courant, animation suspendue."""
+        self._timer.stop()
+        self.makeCurrent()
+        try:
+            return fn(self.ctx, self.renderer)
+        finally:
+            self.doneCurrent()
+            self._clock.restart()
+            self._timer.start(16)
+            self.update()
+
     def _with_context(self, fn) -> None:
         if self.renderer is None:
             return  # initializeGL appliquera l'état courant
