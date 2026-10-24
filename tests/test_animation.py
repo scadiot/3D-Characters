@@ -112,3 +112,14 @@ def test_retarget_compensates_opposite_facing():
     spine_dir = lambda g: g[1][:3, :3] @ [0, 1, 0]
     assert np.allclose(spine_dir(gm), flip @ spine_dir(gs))  # se penche vers -Z, son avant à lui
     assert np.allclose(gm[0][:3, 3], [0, 1, -0.5])           # avance vers son avant
+
+
+def test_retarget_in_place_keeps_only_vertical_hips_motion():
+    source = _skeleton(IDENTITY, [0, 0.1, 0], IDENTITY)
+    model = _skeleton(IDENTITY, [0, 0.1, 0], IDENTITY)
+    one = np.array([0.0])
+    clip = AnimationClip("move", 0.0, {}, {"Hips": Track(one, np.array([[0.3, 1.2, 0.5]]), "LINEAR")}, source)
+    moving = model.global_matrices(Retargeter(model, clip).pose(0))
+    in_place = model.global_matrices(Retargeter(model, clip, in_place=True).pose(0))
+    assert np.allclose(moving[0][:3, 3], [0.3, 1.2, 0.5])
+    assert np.allclose(in_place[0][:3, 3], [0, 1.2, 0])

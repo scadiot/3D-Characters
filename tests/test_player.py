@@ -78,3 +78,12 @@ def test_model_facing_minus_z_is_turned_toward_camera():
     p.set_model(LoadedFile(Path("x.glb"), _legs(np.pi), [], [], []))
     g = p.frame().globals
     assert g[2][0, 3] > 0 and g[3][0, 3] < 0  # jambe gauche du côté +X, comme un perso regardant +Z
+
+
+def test_skinned_points_match_rest_vertices(model_path):
+    from viewer.player import skinned_points
+    p = Player()
+    p.set_model(load_glb(model_path))
+    pts = skinned_points(p.model, p.frame())
+    assert pts.shape == (4, 3)
+    assert np.allclose(pts, p.model.meshes[0].positions, atol=1e-6)

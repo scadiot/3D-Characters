@@ -58,8 +58,7 @@ class Player:
         return self._frame(self._retargeter.pose(self.time) if self._retargeter else sk.rest_pose())
 
     def _frame(self, pose: Pose) -> FrameData:
-        g = self._facing @ self.model.skeleton.global_matrices(pose)
-        return FrameData(g, [g[s.joints] @ s.inverse_bind for s in self.model.skins])
+        return frame_from_globals(self.model, self._facing @ self.model.skeleton.global_matrices(pose))
 
     def bone_segments(self, frame: FrameData | None) -> np.ndarray:
         if self.model is None or frame is None or not self.model.skins:
@@ -74,17 +73,26 @@ class Player:
     def bounds(self) -> tuple[np.ndarray, np.ndarray]:
         if self.model is None or not self.model.meshes:
             return np.array([-1.0, 0, -1]), np.array([1.0, 2, 1])
-        frame = self._frame(self.model.skeleton.rest_pose())
-        points = []
-        for m in self.model.meshes:
-            p = np.c_[m.positions.astype(np.float64), np.ones(len(m.positions))]
-            if m.skin is None:
-                points.append((p @ frame.globals[m.node].T)[:, :3])
-                continue
-            # Positions de bind déformées par le squelette au repos : gère les meshes
-            # stockés dans un autre repère (cm, Z vers le haut) que le monde.
-            weighted = m.weights.sum(axis=1) > 0
-            mats = np.einsum("vk,vkij->vij", m.weights[weighted], frame.joint_matrices[m.skin][m.joints[weighted]])
-            points.append(np.einsum("vij,vj->vi", mats, p[weighted])[:, :3])
-        allp = np.concatenate(points)
+        allp = skinned_points(self.model, self._frame(self.model.skeleton.rest_pose()))
         return allp.min(axis=0), allp.max(axis=0)
+
+
+def frame_from_globals(model: LoadedFile, globals_: np.ndarray) -> FrameData:
+    return FrameData(globals_, [globals_[s.joints] @ s.inverse_bind for s in model.skins])
+
+
+def skinned_points(model: LoadedFile, frame: FrameData) -> np.ndarray:
+    """Sommets de tous les meshes, déformés par le squelette dans la pose de `frame`.
+
+    Gère les meshes stockés dans un autre repère (cm, Z vers le haut) que le monde.
+    """
+    points = []
+    for m in model.meshes:
+        p = np.c_[m.positions.astype(np.float64), np.ones(len(m.positions))]
+        if m.skin is None:
+            points.append((p @ frame.globals[m.node].T)[:, :3])
+            continue
+        weighted = m.weights.sum(axis=1) > 0
+        mats = np.einsum("vk,vkij->vij", m.weights[weighted], frame.joint_matrices[m.skin][m.joints[weighted]])
+        points.append(np.einsum("vij,vj->vi", mats, p[weighted])[:, :3])
+    return np.concatenate(points) if points else np.zeros((0, 3))

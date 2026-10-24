@@ -71,11 +71,12 @@ class Retargeter:
     peuvent différer (export Blender, etc.) tant que leurs poses de repos coïncident.
     Un écart d'orientation (perso regardant -Z au lieu de +Z) est compensé en exprimant
     les variations source dans le repère du modèle.
-    La position des Hips suit le déplacement source, mis à l'échelle de leur hauteur.
+    La position des Hips suit le déplacement source, mis à l'échelle de leur hauteur ;
+    avec `in_place`, seule sa composante verticale est conservée (sprites sur place).
     """
 
-    def __init__(self, model: Skeleton, clip: AnimationClip):
-        self.model, self.clip = model, clip
+    def __init__(self, model: Skeleton, clip: AnimationClip, in_place: bool = False):
+        self.model, self.clip, self.in_place = model, clip, in_place
         source = clip.skeleton
         self.pairs = {}
         for name in clip.rotations:
@@ -115,7 +116,10 @@ class Retargeter:
                 pose.r[i] = mat3_to_quat(parent_r.T @ target)
             if i == self.hips and self.source_hips is not None:
                 offset = source_globals[self.source_hips][:3, 3] - self.source_hips_rest
-                world = np.append(self.model_hips_rest + self.align @ offset * self.ratio, 1.0)
+                offset = self.align @ offset * self.ratio
+                if self.in_place:
+                    offset[[0, 2]] = 0.0
+                world = np.append(self.model_hips_rest + offset, 1.0)
                 pose.t[i] = (np.linalg.inv(parent) @ world)[:3]
             globals_[i] = parent @ trs_to_mat4(pose.t[i:i + 1], pose.r[i:i + 1], pose.s[i:i + 1])[0]
         return pose
