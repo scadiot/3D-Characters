@@ -121,13 +121,6 @@ class MainWindow(QMainWindow):
         for m in self.library.messages:
             self.statusBar().showMessage(m, 8000)
 
-        self.anim_combo.blockSignals(True)
-        self.anim_combo.clear()
-        self.anim_combo.addItem("aucune (T-pose)")
-        for a in self.library.animations:
-            self.anim_combo.addItem(("⚠ " if a.error else "") + a.label)
-        self.anim_combo.blockSignals(False)
-
         self.character_combo.blockSignals(True)
         self.character_combo.clear()
         self.character_combo.addItems([c.name for c in self.library.characters])
@@ -135,9 +128,8 @@ class MainWindow(QMainWindow):
 
         if restore:
             self._select_text(self.character_combo, self.settings.value("character"))
-            self._select_text(self.anim_combo, self.settings.value("animation"))
-        self._on_character(self.character_combo.currentIndex())
-        self._on_animation(self.anim_combo.currentIndex())
+        self._on_character(self.character_combo.currentIndex(),
+                           animation=self.settings.value("animation") if restore else None)
         if restore:
             self._select_text(self.skin_combo, self.settings.value("skin"))
             self._on_skin(self.skin_combo.currentIndex())
@@ -152,7 +144,8 @@ class MainWindow(QMainWindow):
                 combo.blockSignals(False)
 
     # --- sélection ---
-    def _on_character(self, index: int) -> None:
+    def _on_character(self, index: int, animation: str | None = None) -> None:
+        previous_animation = animation or self.anim_combo.currentText()
         model = None
         self.skin_combo.blockSignals(True)
         self.skin_combo.clear()
@@ -175,8 +168,21 @@ class MainWindow(QMainWindow):
         self.player.set_model(model)
         self.view.set_skin(None)
         self.view.model_changed()
+        self._rebuild_animations(model, previous_animation)
+
+    def _rebuild_animations(self, model: LoadedFile | None, selected: str | None) -> None:
+        """Liste : T-pose, clips intégrés au personnage, puis clips de Animations/."""
+        self.anim_combo.blockSignals(True)
+        self.anim_combo.clear()
+        self.anim_combo.addItem("aucune (T-pose)", None)
+        for i, clip in enumerate(model.clips if model else []):
+            self.anim_combo.addItem(f"{clip.name} (intégrée)", ("embedded", i))
+        for i, a in enumerate(self.library.animations):
+            self.anim_combo.addItem(("⚠ " if a.error else "") + a.label, ("library", i))
+        self.anim_combo.blockSignals(False)
+        self._select_text(self.anim_combo, selected)
         self.anim_combo.setEnabled(model is not None and model.skinned)
-        self._update_validation()
+        self._on_animation(self.anim_combo.currentIndex())
 
     def _on_skin(self, index: int) -> None:
         entry = self._current_character()
@@ -196,8 +202,11 @@ class MainWindow(QMainWindow):
 
     def _on_animation(self, index: int) -> None:
         clip = None
-        if index > 0:
-            entry = self.library.animations[index - 1]
+        source = self.anim_combo.itemData(index)
+        if source is not None and source[0] == "embedded":
+            clip = self.player.model.clips[source[1]]
+        elif source is not None:
+            entry = self.library.animations[source[1]]
             if entry.error:
                 self.statusBar().showMessage(f"{entry.label} : {entry.error}", 8000)
             else:

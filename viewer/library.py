@@ -33,17 +33,24 @@ def scan(root: Path) -> Library:
     root = Path(root)
     lib = Library()
     characters_dir, animations_dir = root / "Characters", root / "Animations"
+    # Un .glb posé à plat (racine ou Characters/) est un personnage sans skins.
+    loose = sorted(root.glob("*.glb"))
     if not characters_dir.is_dir():
-        lib.messages.append(f"Dossier introuvable : {characters_dir}")
+        if not loose:
+            lib.messages.append(f"Dossier introuvable : {characters_dir}")
     else:
+        loose += sorted(characters_dir.glob("*.glb"))
         for d in sorted(p for p in characters_dir.iterdir() if p.is_dir()):
             model = _find_model(d)
             if model is None:
                 lib.messages.append(f"Aucun .glb dans {d}")
                 continue
             lib.characters.append(CharacterEntry(d.name, model, _find_skins(d / "skins")))
+    lib.characters += [CharacterEntry(f.stem, f, []) for f in loose]
+    lib.characters.sort(key=lambda c: c.name.lower())
     if not animations_dir.is_dir():
-        lib.messages.append(f"Dossier introuvable : {animations_dir}")
+        if not loose:
+            lib.messages.append(f"Dossier introuvable : {animations_dir}")
     else:
         for f in sorted(animations_dir.glob("*.glb")):
             lib.animations.extend(_scan_animation(f))
