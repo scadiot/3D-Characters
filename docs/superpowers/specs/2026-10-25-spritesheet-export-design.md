@@ -27,10 +27,11 @@ animations intégrées aux GLB des personnages (seules celles de `Animations/` s
 
 - Largeur fixe `sheetWidth` (défaut 1000 px), fond transparent (RGBA, alpha 0).
 - Hauteur = nombre de lignes × `frameHeight`.
-- Chaque couple (animation, orientation) commence une nouvelle ligne, dans l'ordre :
-  animations dans l'ordre de la config, orientations dans l'ordre S, SE, E, NE, N, NO, O, SO.
-- Les frames d'un couple s'enchaînent de gauche à droite sans espace ; si la frame suivante
-  dépasse `sheetWidth`, elle passe au début de la ligne suivante.
+- Les couples (animation, orientation) se suivent dans l'ordre : animations dans l'ordre
+  de la config, orientations dans l'ordre S, SE, E, NE, N, NO, O, SO.
+- Toutes les frames s'enchaînent de gauche à droite sans espace, y compris d'une animation
+  à la suivante (pas de nouvelle ligne par couple, pour réduire la taille de l'image) ; si la
+  frame suivante dépasse `sheetWidth`, elle passe au début de la ligne suivante.
 - Chaque frame fait `frameHeight` px de haut (défaut 250) et est rognée horizontalement à la
   boîte englobante des pixels non transparents (largeur minimale 1 px pour une frame vide).
 
@@ -183,7 +184,7 @@ Modifications de l'existant :
 Unitaires (`pytest`) :
 - `config` : aller-retour JSON, valeurs par défaut, fichier illisible, bornes.
 - `layout` : temps des frames (durée nulle, arrondi), échelle et ligne de sol, placement
-  avec retour à la ligne et nouvelle ligne par couple, structure du JSON.
+  à la suite d'un couple à l'autre avec retour à la ligne, structure du JSON.
 - `Retargeter(in_place=True)` : déplacement horizontal des Hips annulé, vertical conservé.
 - `skinned_points` : cohérent avec `Player.bounds`.
 

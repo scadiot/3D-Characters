@@ -26,16 +26,16 @@ def test_compute_scale():
     assert below.pixels_per_unit == pytest.approx((250 - 2 * MARGIN) / 2.5)
 
 
-def test_pack_new_row_per_sequence_and_wrap():
+def test_pack_continues_across_sequences_and_wraps():
     seqs = [
-        [(40, 20, 240)] * 3,  # 120 px : tient sur une ligne
-        [(60, 30, 240)] * 4,  # 240 px > 200 : retour à la ligne après 3
+        [(40, 20, 240)] * 3,  # 0..120
+        [(60, 30, 240)] * 4,  # suit sur la même ligne, retour à la ligne quand 200 px est dépassé
     ]
     placed, height = pack(seqs, sheet_width=200, frame_height=250)
     assert [(p.x, p.y) for p in placed[0]] == [(0, 0), (40, 0), (80, 0)]
-    assert [(p.x, p.y) for p in placed[1]] == [(0, 250), (60, 250), (120, 250), (0, 500)]
-    assert placed[1][0] == Placed(0, 250, 60, 250, 30, 240)
-    assert height == 750
+    assert [(p.x, p.y) for p in placed[1]] == [(120, 0), (0, 250), (60, 250), (120, 250)]
+    assert placed[1][0] == Placed(120, 0, 60, 250, 30, 240)
+    assert height == 500
 
 
 def test_pack_rejects_too_wide_frame():

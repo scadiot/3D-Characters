@@ -38,13 +38,11 @@ class Placed:
 
 def pack(sequences: list[list[tuple[int, int, int]]], sheet_width: int,
          frame_height: int) -> tuple[list[list[Placed]], int]:
-    """Place les frames (largeur, origine x, origine y) : une nouvelle ligne par séquence,
+    """Place les frames (largeur, origine x, origine y) à la suite, séquence après séquence,
     retour à la ligne quand la largeur de la feuille est atteinte. Renvoie aussi la hauteur."""
     placed: list[list[Placed]] = []
-    row = -1
+    row, x = 0, 0
     for sequence in sequences:
-        row += 1
-        x = 0
         current = []
         for width, origin_x, origin_y in sequence:
             if width > sheet_width:
@@ -55,7 +53,7 @@ def pack(sequences: list[list[tuple[int, int, int]]], sheet_width: int,
             current.append(Placed(x, row * frame_height, width, frame_height, origin_x, origin_y))
             x += width
         placed.append(current)
-    return placed, (row + 1) * frame_height
+    return placed, (row + 1) * frame_height if any(placed) else 0
 
 
 def build_json(image_name: str, sheet_width: int, sheet_height: int, frame_height: int,
