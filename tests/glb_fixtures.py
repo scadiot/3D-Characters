@@ -121,3 +121,20 @@ def build_anim(path: Path) -> None:
         ],
     )]
     b.save(path)
+
+
+def build_object(path: Path) -> None:
+    """Objet statique : racine décalée de 0.5 en Z, triangle de 1 m le long de +Z sous un nœud enfant."""
+    b = _Builder()
+    g = b.gltf
+    g.nodes = [
+        Node(name="Root", translation=[0, 0, 0.5], children=[1]),
+        Node(name="Stick", mesh=0),
+    ]
+    g.scenes = [Scene(nodes=[0])]
+    positions = np.array([[0, 0, 0], [0.1, 0, 0], [0, 0, 1]], np.float32)
+    g.meshes = [Mesh(name="Stick", primitives=[
+        Primitive(attributes=Attributes(POSITION=b.accessor(positions, "VEC3", FLOAT, minmax=True)), material=0)
+    ])]
+    g.materials = [Material(name="Skin")]  # même nom qu'un matériau du perso : ne doit pas recevoir ses skins
+    b.save(path)

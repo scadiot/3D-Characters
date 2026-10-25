@@ -119,8 +119,8 @@ modèle et recharge les meshes, sans réinitialiser la caméra ni les skins choi
   d'origine.
 - `GLView` : `attachments_changed()` qui recharge les meshes sans `clear_skins()` ni
   `frame_all()`.
-- `Renderer.set_model` : inchangé ; le remplacement de skin ignore les meshes marqués
-  comme objets.
+- `Renderer` : inchangé ; les meshes d'objet ont `material = None` dans le modèle
+  composé, donc aucun remplacement de skin ne s'y applique.
 
 ## Erreurs
 
