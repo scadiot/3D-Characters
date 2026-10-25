@@ -31,38 +31,46 @@ def _clamp(value, bounds: tuple[int, int], default: int) -> int:
         return default
 
 
+def config_from_dict(data: dict) -> ExportConfig:
+    """Lève ValueError / AttributeError sur une structure invalide."""
+    animations = []
+    for a in data.get("animations", []):
+        if not isinstance(a, dict) or not a.get("name"):
+            continue
+        wanted = set(a.get("orientations", []))
+        animations.append(AnimationExport(
+            str(a["name"]),
+            # « fps » : ancienne clé, sa valeur est reprise comme nombre de frames
+            _clamp(a.get("frames", a.get("fps", 8)), FRAMES_RANGE, 8),
+            [o for o in ORIENTATIONS if o in wanted],
+        ))
+    return ExportConfig(
+        _clamp(data.get("sheetWidth", 1000), SHEET_WIDTH_RANGE, 1000),
+        _clamp(data.get("frameHeight", 250), FRAME_HEIGHT_RANGE, 250),
+        animations,
+    )
+
+
+def config_to_dict(config: ExportConfig) -> dict:
+    return {
+        "sheetWidth": config.sheet_width,
+        "frameHeight": config.frame_height,
+        "animations": [{"name": a.name, "frames": a.frames, "orientations": a.orientations}
+                       for a in config.animations],
+    }
+
+
 def load_config(path: Path) -> tuple[ExportConfig, str | None]:
     """Config du fichier, ou config par défaut ; le second élément décrit une erreur de lecture."""
     path = Path(path)
     if not path.is_file():
         return ExportConfig(), None
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-        animations = []
-        for a in data.get("animations", []):
-            if not isinstance(a, dict) or not a.get("name"):
-                continue
-            wanted = set(a.get("orientations", []))
-            animations.append(AnimationExport(
-                str(a["name"]),
-                # « fps » : ancienne clé, sa valeur est reprise comme nombre de frames
-                _clamp(a.get("frames", a.get("fps", 8)), FRAMES_RANGE, 8),
-                [o for o in ORIENTATIONS if o in wanted],
-            ))
-        return ExportConfig(
-            _clamp(data.get("sheetWidth", 1000), SHEET_WIDTH_RANGE, 1000),
-            _clamp(data.get("frameHeight", 250), FRAME_HEIGHT_RANGE, 250),
-            animations,
-        ), None
+        return config_from_dict(json.loads(path.read_text(encoding="utf-8"))), None
     except (ValueError, AttributeError) as e:
         return ExportConfig(), f"{path.name} illisible : {e}"
 
 
 def save_config(path: Path, config: ExportConfig) -> None:
-    data = {
-        "sheetWidth": config.sheet_width,
-        "frameHeight": config.frame_height,
-        "animations": [{"name": a.name, "frames": a.frames, "orientations": a.orientations}
-                       for a in config.animations],
-    }
-    Path(path).write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    Path(path).write_text(json.dumps(config_to_dict(config), indent=2, ensure_ascii=False) + "\n",
+                          encoding="utf-8")

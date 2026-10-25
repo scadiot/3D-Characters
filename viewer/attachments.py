@@ -56,34 +56,41 @@ def _scale(value) -> float:
     return value if value > 0 and math.isfinite(value) else 1.0
 
 
+def attachments_from_data(items) -> list[Attachment]:
+    """Valeur de la clé « attachments » ; lève ValueError / TypeError sur une structure invalide."""
+    result = []
+    for a in items:
+        if not isinstance(a, dict) or not a.get("object"):
+            continue
+        result.append(Attachment(
+            str(a["object"]),
+            str(a.get("bone") or DEFAULT_BONE),
+            _vec3(a.get("position")),
+            _vec3(a.get("rotation")),
+            _scale(a.get("scale", 1.0)),
+            bool(a.get("enabled", True)),
+        ))
+    return result
+
+
+def attachments_to_data(attachments: list[Attachment]) -> list[dict]:
+    return [{"object": a.object, "bone": a.bone, "position": list(a.position), "rotation": list(a.rotation),
+             "scale": a.scale, "enabled": a.enabled} for a in attachments]
+
+
 def load_attachments(path: Path) -> tuple[list[Attachment], str | None]:
     """Attachements du fichier ; le second élément décrit une erreur de lecture."""
     path = Path(path)
     if not path.is_file():
         return [], None
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-        result = []
-        for a in data.get("attachments", []):
-            if not isinstance(a, dict) or not a.get("object"):
-                continue
-            result.append(Attachment(
-                str(a["object"]),
-                str(a.get("bone") or DEFAULT_BONE),
-                _vec3(a.get("position")),
-                _vec3(a.get("rotation")),
-                _scale(a.get("scale", 1.0)),
-                bool(a.get("enabled", True)),
-            ))
-        return result, None
-    except (ValueError, AttributeError) as e:
+        return attachments_from_data(json.loads(path.read_text(encoding="utf-8")).get("attachments", [])), None
+    except (ValueError, AttributeError, TypeError) as e:
         return [], f"{path.name} illisible : {e}"
 
 
 def save_attachments(path: Path, attachments: list[Attachment]) -> None:
-    data = {"attachments": [{"object": a.object, "bone": a.bone, "position": list(a.position),
-                             "rotation": list(a.rotation), "scale": a.scale, "enabled": a.enabled}
-                            for a in attachments]}
+    data = {"attachments": attachments_to_data(attachments)}
     Path(path).write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
