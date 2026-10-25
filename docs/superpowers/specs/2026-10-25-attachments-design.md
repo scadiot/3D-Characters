@@ -5,6 +5,24 @@ Statut : validé (brainstorming)
 Complète : [2026-10-24-character-viewer-design.md](2026-10-24-character-viewer-design.md),
 [2026-10-25-spritesheet-export-design.md](2026-10-25-spritesheet-export-design.md)
 
+## Révision (2026-10-25) — réglage propre à l'objet
+
+Remplace les sections « Fichier de configuration » et « Géométrie » ci-dessous :
+
+- Le réglage (bone, position, rotation, échelle) appartient à l'objet et vaut pour tous
+  les personnages et toutes les configs : `Objects/<objet>.json` à côté du `.glb`
+  (`{"bone", "position", "rotation", "scale"}`), défauts si absent.
+- Les configs d'export (cf. [2026-10-25-export-presets-design.md](2026-10-25-export-presets-design.md))
+  listent seulement les objets affichés : `"objects": ["golf_club.glb"]`. Plus de champ `enabled`.
+- Repère **T-pose** : origine sur le bone, axes du personnage tourné vers +Z en T-pose
+  (X à sa gauche, Y vers le haut, Z devant lui), en mètres. Socket local
+  `= inv(F · G_bone_repos)[3×3] @ T(position) R(rotation) S(scale)` avec `F` la rotation
+  de face du Player : l'objet a la même place sur tous les rigs en T-pose, puis suit les
+  rotations du bone (même principe que le retargeting). Remplace la compensation d'échelle
+  seule, qui laissait l'orientation dépendre des axes locaux du bone.
+- Dialogue : liste de tous les objets de `Objects/` avec case « affiché dans cette config »,
+  réglage de l'objet sélectionné ; OK enregistre les réglages modifiés et la liste de la config.
+
 ## Objectif
 
 Attacher des objets 3D (ex. `Objects/golf_club.glb`) à un bone d'un personnage, avec une

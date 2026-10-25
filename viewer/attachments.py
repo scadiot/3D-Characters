@@ -1,4 +1,4 @@
-"""Objets attachés aux bones d'un personnage (attachments.json) et composition du modèle."""
+"""Objets attachés aux bones (réglage propre à chaque objet : Objects/<objet>.json) et composition du modèle."""
 import json
 import math
 from dataclasses import dataclass, replace
@@ -7,28 +7,34 @@ from pathlib import Path
 import numpy as np
 
 from viewer.gltf_loader import LoadedFile
-from viewer.mathutil import mat3_to_quat
-from viewer.skeleton import Skeleton
+from viewer.mathutil import decompose, mat3_to_quat, quat_to_mat3
+from viewer.skeleton import Skeleton, yaw_matrix
 
 Vec3 = tuple[float, float, float]
 DEFAULT_BONE = "RightHand"
+OBJECTS_DIR = "Objects"
 
 
 @dataclass
 class Attachment:
+    """Placement d'un objet, commun à tous les personnages.
+
+    Repère T-pose : origine sur le bone, axes du personnage tourné vers +Z (X à sa gauche,
+    Y vers le haut, Z devant lui), en mètres ; l'objet suit ensuite les rotations du bone.
+    """
+
     object: str                       # chemin relatif à Objects/
     bone: str = DEFAULT_BONE          # nom canonique
-    position: Vec3 = (0.0, 0.0, 0.0)  # mètres, repère du bone sans son échelle
+    position: Vec3 = (0.0, 0.0, 0.0)  # mètres
     rotation: Vec3 = (0.0, 0.0, 0.0)  # degrés, X puis Y puis Z
     scale: float = 1.0
-    enabled: bool = True
 
 
 @dataclass
 class Socket:
-    attachment: int    # index dans la liste d'attachements
-    node: int          # nœud socket du squelette composé
-    bone_scale: float  # échelle globale de repos du bone, compensée par le socket
+    attachment: int     # index dans la liste d'attachements
+    node: int           # nœud socket du squelette composé
+    basis: np.ndarray   # (4, 4) inverse de la rotation/échelle monde du bone en T-pose
 
 
 @dataclass
@@ -38,7 +44,7 @@ class Composed:
     messages: list[str]
 
 
-# --- configuration ---
+# --- réglages des objets ---
 
 def _vec3(value) -> Vec3:
     try:
@@ -56,47 +62,40 @@ def _scale(value) -> float:
     return value if value > 0 and math.isfinite(value) else 1.0
 
 
-def attachments_from_data(items) -> list[Attachment]:
-    """Valeur de la clé « attachments » ; lève ValueError / TypeError sur une structure invalide."""
-    result = []
-    for a in items:
-        if not isinstance(a, dict) or not a.get("object"):
-            continue
-        result.append(Attachment(
-            str(a["object"]),
-            str(a.get("bone") or DEFAULT_BONE),
-            _vec3(a.get("position")),
-            _vec3(a.get("rotation")),
-            _scale(a.get("scale", 1.0)),
-            bool(a.get("enabled", True)),
-        ))
-    return result
+def placement_path(root: Path, name: str) -> Path:
+    """Réglage d'un objet : même chemin que son .glb, extension .json."""
+    return (Path(root) / OBJECTS_DIR / name).with_suffix(".json")
 
 
-def attachments_to_data(attachments: list[Attachment]) -> list[dict]:
-    return [{"object": a.object, "bone": a.bone, "position": list(a.position), "rotation": list(a.rotation),
-             "scale": a.scale, "enabled": a.enabled} for a in attachments]
-
-
-def load_attachments(path: Path) -> tuple[list[Attachment], str | None]:
-    """Attachements du fichier ; le second élément décrit une erreur de lecture."""
-    path = Path(path)
+def load_placement(root: Path, name: str) -> tuple[Attachment, str | None]:
+    """Réglage de l'objet, ou réglage par défaut ; le second élément décrit une erreur de lecture."""
+    path = placement_path(root, name)
     if not path.is_file():
-        return [], None
+        return Attachment(name), None
     try:
-        return attachments_from_data(json.loads(path.read_text(encoding="utf-8")).get("attachments", [])), None
-    except (ValueError, AttributeError, TypeError) as e:
-        return [], f"{path.name} illisible : {e}"
+        data = json.loads(path.read_text(encoding="utf-8"))
+        return Attachment(
+            name,
+            str(data.get("bone") or DEFAULT_BONE),
+            _vec3(data.get("position")),
+            _vec3(data.get("rotation")),
+            _scale(data.get("scale", 1.0)),
+        ), None
+    except (ValueError, AttributeError) as e:
+        return Attachment(name), f"{path.name} illisible : {e}"
 
 
-def save_attachments(path: Path, attachments: list[Attachment]) -> None:
-    data = {"attachments": attachments_to_data(attachments)}
-    Path(path).write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+def save_placement(root: Path, attachment: Attachment) -> Path:
+    path = placement_path(root, attachment.object)
+    data = {"bone": attachment.bone, "position": list(attachment.position),
+            "rotation": list(attachment.rotation), "scale": attachment.scale}
+    path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    return path
 
 
 def scan_objects(root: Path) -> list[str]:
     """Fichiers .glb sous `root/Objects`, en chemins relatifs avec `/`."""
-    objects_dir = Path(root) / "Objects"
+    objects_dir = Path(root) / OBJECTS_DIR
     if not objects_dir.is_dir():
         return []
     return sorted(p.relative_to(objects_dir).as_posix() for p in objects_dir.rglob("*")
@@ -114,22 +113,28 @@ def euler_quat(rotation: Vec3) -> np.ndarray:
     return mat3_to_quat(rz @ ry @ rx)
 
 
-def socket_trs(attachment: Attachment, bone_scale: float) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """TRS local du socket : S(1/k) @ T(position) @ R(rotation) @ S(scale), k uniforme."""
-    return (np.asarray(attachment.position, np.float64) / bone_scale, euler_quat(attachment.rotation),
-            np.full(3, attachment.scale / bone_scale))
+def offset_matrix(attachment: Attachment) -> np.ndarray:
+    """T(position) @ R(rotation) @ S(scale), dans le repère T-pose."""
+    m = np.eye(4)
+    m[:3, :3] = quat_to_mat3(euler_quat(attachment.rotation)) * attachment.scale
+    m[:3, 3] = attachment.position
+    return m
+
+
+def socket_trs(attachment: Attachment, basis: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """TRS local du socket : `basis` ramène du repère du bone au repère T-pose."""
+    return decompose(basis @ offset_matrix(attachment))
 
 
 def compose(model: LoadedFile, attachments: list[Attachment], objects: dict[str, LoadedFile]) -> Composed:
-    """Greffe chaque objet actif sous un socket enfant de son bone ; `objects` : objets chargés par nom."""
+    """Greffe chaque objet sous un socket enfant de son bone ; `objects` : objets chargés par nom."""
     sk = model.skeleton
-    rest = sk.global_matrices(sk.rest_pose())
+    # Même repère que l'affichage : le Player tourne le personnage vers +Z.
+    rest = yaw_matrix(-sk.facing_yaw()) @ sk.global_matrices(sk.rest_pose())
     names, parents = list(sk.names), list(sk.parents)
     t, r, s = [sk.rest_t], [sk.rest_r], [sk.rest_s]
     meshes, sockets, messages = list(model.meshes), [], []
     for i, a in enumerate(attachments):
-        if not a.enabled:
-            continue
         obj = objects.get(a.object)
         if obj is None:
             messages.append(f"Objet introuvable ou illisible : {a.object}")
@@ -138,11 +143,12 @@ def compose(model: LoadedFile, attachments: list[Attachment], objects: dict[str,
         if bone is None:
             messages.append(f"{a.object} : pas de bone {a.bone} dans le squelette")
             continue
-        k = float(np.linalg.norm(rest[bone][:3, :3], axis=0).mean())
+        basis = np.eye(4)
+        basis[:3, :3] = np.linalg.inv(rest[bone][:3, :3])
         socket, prefix = len(names), f"attach{i}"
         names.append(prefix)
         parents.append(bone)
-        for values, v in zip((t, r, s), socket_trs(a, k)):
+        for values, v in zip((t, r, s), socket_trs(a, basis)):
             values.append(v[None])
         base, osk = len(names), obj.skeleton
         names += [f"{prefix}/{n}" for n in osk.raw_names]
@@ -151,7 +157,7 @@ def compose(model: LoadedFile, attachments: list[Attachment], objects: dict[str,
         r.append(osk.rest_r)
         s.append(osk.rest_s)
         meshes += [replace(m, node=base + m.node, skin=None, material=None) for m in obj.meshes]
-        sockets.append(Socket(i, socket, k))
+        sockets.append(Socket(i, socket, basis))
     if not sockets:
         return Composed(model, [], messages)
     raw_names = sk.raw_names + names[len(sk.names):]
@@ -162,10 +168,9 @@ def compose(model: LoadedFile, attachments: list[Attachment], objects: dict[str,
 def apply_offset(model: LoadedFile, socket: Socket, attachment: Attachment) -> None:
     """Déplace un objet déjà composé (modifie la pose de repos de son socket)."""
     sk = model.skeleton
-    sk.rest_t[socket.node], sk.rest_r[socket.node], sk.rest_s[socket.node] = socket_trs(attachment,
-                                                                                       socket.bone_scale)
+    sk.rest_t[socket.node], sk.rest_r[socket.node], sk.rest_s[socket.node] = socket_trs(attachment, socket.basis)
 
 
 def structure_key(attachments: list[Attachment]) -> list[tuple]:
     """Ce qui impose de recomposer le modèle (le reste se règle avec `apply_offset`)."""
-    return [(a.object, a.bone, a.enabled) for a in attachments]
+    return [(a.object, a.bone) for a in attachments]

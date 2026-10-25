@@ -1,10 +1,9 @@
-"""Configurations nommées d'un personnage (exports/<nom>.json) : export de sprite sheet + objets attachés."""
+"""Configurations nommées d'un personnage (exports/<nom>.json) : export de sprite sheet + objets affichés."""
 import json
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from viewer.attachments import Attachment, attachments_from_data, attachments_to_data, load_attachments
 from viewer.sprites.config import ExportConfig, config_from_dict, config_to_dict, load_config
 
 PRESETS_DIR = "exports"
@@ -15,7 +14,22 @@ _INVALID_CHARS = re.compile(r'[<>:"/\\|?*]')
 @dataclass
 class Preset:
     export: ExportConfig = field(default_factory=ExportConfig)
-    attachments: list[Attachment] = field(default_factory=list)
+    objects: list[str] = field(default_factory=list)  # objets attachés, chemins relatifs à Objects/
+
+
+def _objects(data: dict) -> list[str]:
+    """Clé « objects » ; à défaut, noms des anciennes entrées « attachments » (réglage par config)."""
+    if "objects" in data:
+        return [str(o) for o in data["objects"] if o]
+    names = (a.get("object") for a in data.get("attachments", []) if isinstance(a, dict))
+    return list(dict.fromkeys(str(n) for n in names if n))
+
+
+def _read_json(path: Path) -> dict:
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise ValueError("objet JSON attendu")
+    return data
 
 
 def _files(character_dir: Path) -> list[Path]:
@@ -41,12 +55,16 @@ def load_preset(character_dir: Path, name: str) -> tuple[Preset, str | None]:
         if _files(character_dir):
             return Preset(), None
         # Migration : contenu des anciens spritesheet.json et attachments.json.
-        export, export_error = load_config(character_dir / "spritesheet.json")
-        attachments, attachments_error = load_attachments(character_dir / "attachments.json")
-        return Preset(export, attachments), export_error or attachments_error
+        export, error = load_config(character_dir / "spritesheet.json")
+        legacy = character_dir / "attachments.json"
+        try:
+            objects = _objects(_read_json(legacy)) if legacy.is_file() else []
+        except (ValueError, AttributeError, TypeError) as e:
+            objects, error = [], error or f"{legacy.name} illisible : {e}"
+        return Preset(export, objects), error
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-        return Preset(config_from_dict(data), attachments_from_data(data.get("attachments", []))), None
+        data = _read_json(path)
+        return Preset(config_from_dict(data), _objects(data)), None
     except (ValueError, AttributeError, TypeError) as e:
         return Preset(), f"{path.name} illisible : {e}"
 
@@ -54,7 +72,7 @@ def load_preset(character_dir: Path, name: str) -> tuple[Preset, str | None]:
 def save_preset(character_dir: Path, name: str, preset: Preset) -> Path:
     path = preset_path(character_dir, name)
     path.parent.mkdir(exist_ok=True)
-    data = config_to_dict(preset.export) | {"attachments": attachments_to_data(preset.attachments)}
+    data = config_to_dict(preset.export) | {"objects": list(preset.objects)}
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     return path
 

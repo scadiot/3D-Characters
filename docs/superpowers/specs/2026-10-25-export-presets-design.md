@@ -5,6 +5,14 @@ Statut : validé (brainstorming)
 Complète : [2026-10-25-spritesheet-export-design.md](2026-10-25-spritesheet-export-design.md),
 [2026-10-25-attachments-design.md](2026-10-25-attachments-design.md)
 
+## Révision (2026-10-25)
+
+Une config ne stocke plus le réglage des objets, seulement les objets affichés :
+`"objects": ["golf_club.glb"]` à la place de `"attachments"`. Le réglage appartient à
+l'objet (cf. révision de [2026-10-25-attachments-design.md](2026-10-25-attachments-design.md)).
+À la lecture, une ancienne clé `attachments` (config ou `attachments.json`) donne la
+liste des noms d'objets ; les réglages qu'elle contenait sont ignorés.
+
 ## Objectif
 
 Enregistrer plusieurs configurations nommées pour un même personnage (ex. « golf » avec
