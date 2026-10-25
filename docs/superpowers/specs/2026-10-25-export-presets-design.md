@@ -46,7 +46,8 @@ Les clés et leur validation sont celles de `spritesheet.json` (cf. design expor
 
 Si `exports/` ne contient aucun `.json`, la liste propose une seule config « défaut »
 dont le contenu est lu dans les anciens `spritesheet.json` et `attachments.json` (s'ils
-existent). Le premier enregistrement écrit `exports/défaut.json`. Les anciens fichiers ne
+existent). Le premier enregistrement écrit `exports/défaut.json` ; créer ou dupliquer
+une config l'écrit aussi d'abord, pour qu'elle ne disparaisse pas de la liste. Les anciens fichiers ne
 sont ni modifiés ni supprimés, et ne sont plus lus dès qu'une config existe dans `exports/`.
 
 ## Interface
