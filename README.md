@@ -71,8 +71,9 @@ Points à connaître :
 - Le nom d'un sous-dossier de `skins/` doit correspondre au nom d'un **matériau** du modèle
   (casse ignorée). Un dossier qui ne correspond à aucun matériau est signalé dans la barre
   d'état.
-- Le dossier `sample/` du dépôt contient un jeu de données d'exemple. Il est exclu de git
-  (`.gitignore`).
+- Le dossier `sample/` du dépôt contient un jeu de données d'exemple. Ses fichiers binaires
+  (`.glb`, `.fbx`, `.png`) sont versionnés avec **Git LFS** : installer
+  [Git LFS](https://git-lfs.com) avant de cloner, ou lancer `git lfs pull` après coup.
 
 ## Utilisation
 

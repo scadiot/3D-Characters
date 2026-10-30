@@ -1,0 +1,53 @@
+{
+  "sheetWidth": 1000,
+  "frameHeight": 250,
+  "animations": [
+    {
+      "name": "idle",
+      "frames": 1,
+      "orientations": [
+        "S",
+        "E",
+        "N",
+        "O"
+      ]
+    },
+    {
+      "name": "run",
+      "frames": 8,
+      "orientations": [
+        "S",
+        "E",
+        "N",
+        "O"
+      ]
+    },
+    {
+      "name": "Sleeping_Idle",
+      "frames": 1,
+      "orientations": [
+        "S"
+      ]
+    },
+    {
+      "name": "star_pose",
+      "frames": 1,
+      "orientations": [
+        "S"
+      ]
+    },
+    {
+      "name": "walk",
+      "frames": 8,
+      "orientations": [
+        "S",
+        "E",
+        "N",
+        "O"
+      ]
+    }
+  ],
+  "objects": [
+    "golf_club.glb"
+  ]
+}

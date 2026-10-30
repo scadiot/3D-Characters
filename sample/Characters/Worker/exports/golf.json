@@ -1,0 +1,25 @@
+{
+  "sheetWidth": 1000,
+  "frameHeight": 250,
+  "animations": [
+    {
+      "name": "Golf_Drive",
+      "frames": 40,
+      "orientations": [
+        "N"
+      ],
+      "end": 2.0
+    },
+    {
+      "name": "Golf_Putt",
+      "frames": 20,
+      "orientations": [
+        "N"
+      ],
+      "end": 2.16
+    }
+  ],
+  "objects": [
+    "golf_club.glb"
+  ]
+}

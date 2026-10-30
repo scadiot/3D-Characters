@@ -1,0 +1,20 @@
+{
+  "attachments": [
+    {
+      "object": "golf_club.glb",
+      "bone": "RightHand",
+      "position": [
+        0.25,
+        0.35,
+        0.0
+      ],
+      "rotation": [
+        -90.0,
+        50.0,
+        -220.0
+      ],
+      "scale": 0.5,
+      "enabled": true
+    }
+  ]
+}

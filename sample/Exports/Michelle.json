@@ -1,0 +1,820 @@
+{
+  "image": "Michelle.png",
+  "width": 1000,
+  "height": 750,
+  "frameHeight": 150,
+  "animations": [
+    {
+      "name": "idle",
+      "orientation": "S",
+      "angle": 0,
+      "fps": 0.4,
+      "frames": [
+        {
+          "x": 0,
+          "y": 0,
+          "width": 58,
+          "height": 150,
+          "origin": {
+            "x": 29,
+            "y": 133
+          }
+        }
+      ]
+    },
+    {
+      "name": "idle",
+      "orientation": "E",
+      "angle": 90,
+      "fps": 0.4,
+      "frames": [
+        {
+          "x": 58,
+          "y": 0,
+          "width": 35,
+          "height": 150,
+          "origin": {
+            "x": 16,
+            "y": 133
+          }
+        }
+      ]
+    },
+    {
+      "name": "idle",
+      "orientation": "N",
+      "angle": 180,
+      "fps": 0.4,
+      "frames": [
+        {
+          "x": 93,
+          "y": 0,
+          "width": 58,
+          "height": 150,
+          "origin": {
+            "x": 29,
+            "y": 133
+          }
+        }
+      ]
+    },
+    {
+      "name": "idle",
+      "orientation": "O",
+      "angle": 270,
+      "fps": 0.4,
+      "frames": [
+        {
+          "x": 151,
+          "y": 0,
+          "width": 35,
+          "height": 150,
+          "origin": {
+            "x": 19,
+            "y": 133
+          }
+        }
+      ]
+    },
+    {
+      "name": "run",
+      "orientation": "S",
+      "angle": 0,
+      "fps": 11.429,
+      "frames": [
+        {
+          "x": 186,
+          "y": 0,
+          "width": 50,
+          "height": 150,
+          "origin": {
+            "x": 25,
+            "y": 133
+          }
+        },
+        {
+          "x": 236,
+          "y": 0,
+          "width": 50,
+          "height": 150,
+          "origin": {
+            "x": 24,
+            "y": 133
+          }
+        },
+        {
+          "x": 286,
+          "y": 0,
+          "width": 50,
+          "height": 150,
+          "origin": {
+            "x": 23,
+            "y": 133
+          }
+        },
+        {
+          "x": 336,
+          "y": 0,
+          "width": 50,
+          "height": 150,
+          "origin": {
+            "x": 24,
+            "y": 133
+          }
+        },
+        {
+          "x": 386,
+          "y": 0,
+          "width": 50,
+          "height": 150,
+          "origin": {
+            "x": 25,
+            "y": 133
+          }
+        },
+        {
+          "x": 436,
+          "y": 0,
+          "width": 50,
+          "height": 150,
+          "origin": {
+            "x": 26,
+            "y": 133
+          }
+        },
+        {
+          "x": 486,
+          "y": 0,
+          "width": 50,
+          "height": 150,
+          "origin": {
+            "x": 26,
+            "y": 133
+          }
+        },
+        {
+          "x": 536,
+          "y": 0,
+          "width": 50,
+          "height": 150,
+          "origin": {
+            "x": 25,
+            "y": 133
+          }
+        }
+      ]
+    },
+    {
+      "name": "run",
+      "orientation": "E",
+      "angle": 90,
+      "fps": 11.429,
+      "frames": [
+        {
+          "x": 586,
+          "y": 0,
+          "width": 60,
+          "height": 150,
+          "origin": {
+            "x": 29,
+            "y": 133
+          }
+        },
+        {
+          "x": 646,
+          "y": 0,
+          "width": 85,
+          "height": 150,
+          "origin": {
+            "x": 43,
+            "y": 133
+          }
+        },
+        {
+          "x": 731,
+          "y": 0,
+          "width": 99,
+          "height": 150,
+          "origin": {
+            "x": 54,
+            "y": 133
+          }
+        },
+        {
+          "x": 830,
+          "y": 0,
+          "width": 90,
+          "height": 150,
+          "origin": {
+            "x": 53,
+            "y": 133
+          }
+        },
+        {
+          "x": 920,
+          "y": 0,
+          "width": 67,
+          "height": 150,
+          "origin": {
+            "x": 39,
+            "y": 133
+          }
+        },
+        {
+          "x": 0,
+          "y": 150,
+          "width": 71,
+          "height": 150,
+          "origin": {
+            "x": 38,
+            "y": 133
+          }
+        },
+        {
+          "x": 71,
+          "y": 150,
+          "width": 92,
+          "height": 150,
+          "origin": {
+            "x": 50,
+            "y": 133
+          }
+        },
+        {
+          "x": 163,
+          "y": 150,
+          "width": 80,
+          "height": 150,
+          "origin": {
+            "x": 48,
+            "y": 133
+          }
+        }
+      ]
+    },
+    {
+      "name": "run",
+      "orientation": "N",
+      "angle": 180,
+      "fps": 11.429,
+      "frames": [
+        {
+          "x": 243,
+          "y": 150,
+          "width": 50,
+          "height": 150,
+          "origin": {
+            "x": 25,
+            "y": 133
+          }
+        },
+        {
+          "x": 293,
+          "y": 150,
+          "width": 50,
+          "height": 150,
+          "origin": {
+            "x": 26,
+            "y": 133
+          }
+        },
+        {
+          "x": 343,
+          "y": 150,
+          "width": 50,
+          "height": 150,
+          "origin": {
+            "x": 27,
+            "y": 133
+          }
+        },
+        {
+          "x": 393,
+          "y": 150,
+          "width": 50,
+          "height": 150,
+          "origin": {
+            "x": 26,
+            "y": 133
+          }
+        },
+        {
+          "x": 443,
+          "y": 150,
+          "width": 50,
+          "height": 150,
+          "origin": {
+            "x": 25,
+            "y": 133
+          }
+        },
+        {
+          "x": 493,
+          "y": 150,
+          "width": 50,
+          "height": 150,
+          "origin": {
+            "x": 24,
+            "y": 133
+          }
+        },
+        {
+          "x": 543,
+          "y": 150,
+          "width": 50,
+          "height": 150,
+          "origin": {
+            "x": 24,
+            "y": 133
+          }
+        },
+        {
+          "x": 593,
+          "y": 150,
+          "width": 50,
+          "height": 150,
+          "origin": {
+            "x": 25,
+            "y": 133
+          }
+        }
+      ]
+    },
+    {
+      "name": "run",
+      "orientation": "O",
+      "angle": 270,
+      "fps": 11.429,
+      "frames": [
+        {
+          "x": 643,
+          "y": 150,
+          "width": 60,
+          "height": 150,
+          "origin": {
+            "x": 31,
+            "y": 133
+          }
+        },
+        {
+          "x": 703,
+          "y": 150,
+          "width": 85,
+          "height": 150,
+          "origin": {
+            "x": 42,
+            "y": 133
+          }
+        },
+        {
+          "x": 788,
+          "y": 150,
+          "width": 99,
+          "height": 150,
+          "origin": {
+            "x": 45,
+            "y": 133
+          }
+        },
+        {
+          "x": 887,
+          "y": 150,
+          "width": 90,
+          "height": 150,
+          "origin": {
+            "x": 37,
+            "y": 133
+          }
+        },
+        {
+          "x": 0,
+          "y": 300,
+          "width": 67,
+          "height": 150,
+          "origin": {
+            "x": 28,
+            "y": 133
+          }
+        },
+        {
+          "x": 67,
+          "y": 300,
+          "width": 71,
+          "height": 150,
+          "origin": {
+            "x": 33,
+            "y": 133
+          }
+        },
+        {
+          "x": 138,
+          "y": 300,
+          "width": 92,
+          "height": 150,
+          "origin": {
+            "x": 42,
+            "y": 133
+          }
+        },
+        {
+          "x": 230,
+          "y": 300,
+          "width": 80,
+          "height": 150,
+          "origin": {
+            "x": 32,
+            "y": 133
+          }
+        }
+      ]
+    },
+    {
+      "name": "Sleeping_Idle",
+      "orientation": "S",
+      "angle": 0,
+      "fps": 0.057,
+      "frames": [
+        {
+          "x": 310,
+          "y": 300,
+          "width": 136,
+          "height": 150,
+          "origin": {
+            "x": 51,
+            "y": 133
+          }
+        }
+      ]
+    },
+    {
+      "name": "star_pose",
+      "orientation": "S",
+      "angle": 0,
+      "fps": 15.0,
+      "frames": [
+        {
+          "x": 446,
+          "y": 300,
+          "width": 98,
+          "height": 150,
+          "origin": {
+            "x": 49,
+            "y": 133
+          }
+        }
+      ]
+    },
+    {
+      "name": "walk",
+      "orientation": "S",
+      "angle": 0,
+      "fps": 8.276,
+      "frames": [
+        {
+          "x": 544,
+          "y": 300,
+          "width": 50,
+          "height": 150,
+          "origin": {
+            "x": 24,
+            "y": 133
+          }
+        },
+        {
+          "x": 594,
+          "y": 300,
+          "width": 50,
+          "height": 150,
+          "origin": {
+            "x": 24,
+            "y": 133
+          }
+        },
+        {
+          "x": 644,
+          "y": 300,
+          "width": 50,
+          "height": 150,
+          "origin": {
+            "x": 24,
+            "y": 133
+          }
+        },
+        {
+          "x": 694,
+          "y": 300,
+          "width": 50,
+          "height": 150,
+          "origin": {
+            "x": 25,
+            "y": 133
+          }
+        },
+        {
+          "x": 744,
+          "y": 300,
+          "width": 49,
+          "height": 150,
+          "origin": {
+            "x": 25,
+            "y": 133
+          }
+        },
+        {
+          "x": 793,
+          "y": 300,
+          "width": 50,
+          "height": 150,
+          "origin": {
+            "x": 25,
+            "y": 133
+          }
+        },
+        {
+          "x": 843,
+          "y": 300,
+          "width": 50,
+          "height": 150,
+          "origin": {
+            "x": 25,
+            "y": 133
+          }
+        },
+        {
+          "x": 893,
+          "y": 300,
+          "width": 50,
+          "height": 150,
+          "origin": {
+            "x": 24,
+            "y": 133
+          }
+        }
+      ]
+    },
+    {
+      "name": "walk",
+      "orientation": "E",
+      "angle": 90,
+      "fps": 8.276,
+      "frames": [
+        {
+          "x": 943,
+          "y": 300,
+          "width": 48,
+          "height": 150,
+          "origin": {
+            "x": 27,
+            "y": 133
+          }
+        },
+        {
+          "x": 0,
+          "y": 450,
+          "width": 59,
+          "height": 150,
+          "origin": {
+            "x": 23,
+            "y": 133
+          }
+        },
+        {
+          "x": 59,
+          "y": 450,
+          "width": 87,
+          "height": 150,
+          "origin": {
+            "x": 39,
+            "y": 133
+          }
+        },
+        {
+          "x": 146,
+          "y": 450,
+          "width": 80,
+          "height": 150,
+          "origin": {
+            "x": 45,
+            "y": 133
+          }
+        },
+        {
+          "x": 226,
+          "y": 450,
+          "width": 53,
+          "height": 150,
+          "origin": {
+            "x": 27,
+            "y": 133
+          }
+        },
+        {
+          "x": 279,
+          "y": 450,
+          "width": 65,
+          "height": 150,
+          "origin": {
+            "x": 23,
+            "y": 133
+          }
+        },
+        {
+          "x": 344,
+          "y": 450,
+          "width": 84,
+          "height": 150,
+          "origin": {
+            "x": 38,
+            "y": 133
+          }
+        },
+        {
+          "x": 428,
+          "y": 450,
+          "width": 75,
+          "height": 150,
+          "origin": {
+            "x": 43,
+            "y": 133
+          }
+        }
+      ]
+    },
+    {
+      "name": "walk",
+      "orientation": "N",
+      "angle": 180,
+      "fps": 8.276,
+      "frames": [
+        {
+          "x": 503,
+          "y": 450,
+          "width": 50,
+          "height": 150,
+          "origin": {
+            "x": 26,
+            "y": 133
+          }
+        },
+        {
+          "x": 553,
+          "y": 450,
+          "width": 50,
+          "height": 150,
+          "origin": {
+            "x": 26,
+            "y": 133
+          }
+        },
+        {
+          "x": 603,
+          "y": 450,
+          "width": 50,
+          "height": 150,
+          "origin": {
+            "x": 26,
+            "y": 133
+          }
+        },
+        {
+          "x": 653,
+          "y": 450,
+          "width": 50,
+          "height": 150,
+          "origin": {
+            "x": 25,
+            "y": 133
+          }
+        },
+        {
+          "x": 703,
+          "y": 450,
+          "width": 49,
+          "height": 150,
+          "origin": {
+            "x": 24,
+            "y": 133
+          }
+        },
+        {
+          "x": 752,
+          "y": 450,
+          "width": 50,
+          "height": 150,
+          "origin": {
+            "x": 25,
+            "y": 133
+          }
+        },
+        {
+          "x": 802,
+          "y": 450,
+          "width": 50,
+          "height": 150,
+          "origin": {
+            "x": 25,
+            "y": 133
+          }
+        },
+        {
+          "x": 852,
+          "y": 450,
+          "width": 50,
+          "height": 150,
+          "origin": {
+            "x": 26,
+            "y": 133
+          }
+        }
+      ]
+    },
+    {
+      "name": "walk",
+      "orientation": "O",
+      "angle": 270,
+      "fps": 8.276,
+      "frames": [
+        {
+          "x": 902,
+          "y": 450,
+          "width": 48,
+          "height": 150,
+          "origin": {
+            "x": 21,
+            "y": 133
+          }
+        },
+        {
+          "x": 0,
+          "y": 600,
+          "width": 59,
+          "height": 150,
+          "origin": {
+            "x": 36,
+            "y": 133
+          }
+        },
+        {
+          "x": 59,
+          "y": 600,
+          "width": 87,
+          "height": 150,
+          "origin": {
+            "x": 48,
+            "y": 133
+          }
+        },
+        {
+          "x": 146,
+          "y": 600,
+          "width": 80,
+          "height": 150,
+          "origin": {
+            "x": 35,
+            "y": 133
+          }
+        },
+        {
+          "x": 226,
+          "y": 600,
+          "width": 53,
+          "height": 150,
+          "origin": {
+            "x": 26,
+            "y": 133
+          }
+        },
+        {
+          "x": 279,
+          "y": 600,
+          "width": 65,
+          "height": 150,
+          "origin": {
+            "x": 42,
+            "y": 133
+          }
+        },
+        {
+          "x": 344,
+          "y": 600,
+          "width": 84,
+          "height": 150,
+          "origin": {
+            "x": 46,
+            "y": 133
+          }
+        },
+        {
+          "x": 428,
+          "y": 600,
+          "width": 75,
+          "height": 150,
+          "origin": {
+            "x": 32,
+            "y": 133
+          }
+        }
+      ]
+    }
+  ]
+}
