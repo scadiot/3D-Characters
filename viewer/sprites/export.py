@@ -41,8 +41,11 @@ def export_spritesheet(sprites: SpriteRenderer, model: LoadedFile, jobs: list[Ex
     sk = model.skeleton
     facing = yaw_matrix(-sk.facing_yaw())
     height = config.frame_height
-    plans = [(job, Retargeter(sk, job.clip, in_place=True), frame_times(job.clip.duration, job.export.frames))
-             for job in jobs]
+    plans = []
+    for job in jobs:
+        start, end = job.export.time_range(job.clip.duration)
+        times = [start + t for t in frame_times(end - start, job.export.frames)]
+        plans.append((job, Retargeter(sk, job.clip, in_place=True), times))
     total = sum(len(times) * (1 + len(job.export.orientations)) for job, _, times in plans)
     done = 0
 
@@ -68,11 +71,13 @@ def export_spritesheet(sprites: SpriteRenderer, model: LoadedFile, jobs: list[Ex
         poses.append(globals_list)
     if not math.isfinite(top):
         top, bottom = 1.0, 0.0
-    scale = compute_scale(top, bottom, height)
+    settings = sprites.renderer.settings
+    margin = MARGIN + (math.ceil(settings.outline_width) if settings.outline else 0)  # le contour déborde
+    scale = compute_scale(top, bottom, height, margin)
     ppu = scale.pixels_per_unit
 
     # Caméra orthographique de face : l'axe du personnage (x = 0) au centre de la frame.
-    half_width = math.ceil(radius * ppu) + MARGIN
+    half_width = math.ceil(radius * ppu) + margin
     width = 2 * half_width
     depth = radius + 1.0
     view_proj = orthographic(-half_width / ppu, half_width / ppu,
@@ -83,11 +88,12 @@ def export_spritesheet(sprites: SpriteRenderer, model: LoadedFile, jobs: list[Ex
     # 2e passage : rendu, réduction et rognage de chaque frame.
     sequences, crops, entries = [], [], []
     for (job, _, _), globals_list in zip(plans, poses):
+        start, end = job.export.time_range(job.clip.duration)
         for orientation in job.export.orientations:
             turn = yaw_matrix(math.radians(ANGLES[orientation]))
             sequence, images = [], []
             for g in globals_list:
-                image = sprites.render(frame_from_globals(model, turn @ g), view_proj, render_size)
+                image = sprites.render(frame_from_globals(model, turn @ g), view_proj, render_size, SUPERSAMPLING)
                 image = image.convert("RGBa").resize((width, height), Image.Resampling.LANCZOS).convert("RGBA")
                 bbox = image.getchannel("A").getbbox()
                 left, right = (bbox[0], bbox[2]) if bbox else (half_width, half_width + 1)
@@ -97,7 +103,7 @@ def export_spritesheet(sprites: SpriteRenderer, model: LoadedFile, jobs: list[Ex
             sequences.append(sequence)
             crops.append(images)
             entries.append({"name": job.export.name, "orientation": orientation,
-                            "fps": playback_fps(job.clip.duration, job.export.frames)})
+                            "fps": playback_fps(end - start, job.export.frames)})
 
     placed, sheet_height = pack(sequences, config.sheet_width, height)
     sheet = Image.new("RGBA", (config.sheet_width, max(sheet_height, 1)), (0, 0, 0, 0))

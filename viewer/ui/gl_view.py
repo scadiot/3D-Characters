@@ -5,6 +5,7 @@ from PySide6.QtOpenGLWidgets import QOpenGLWidget
 
 from viewer.camera import OrbitCamera
 from viewer.player import Player
+from viewer.render_settings import RenderSettings
 from viewer.renderer import Renderer
 
 
@@ -16,6 +17,7 @@ class GLView(QOpenGLWidget):
         self.player = player
         self.camera = OrbitCamera()
         self.show_bones = False
+        self.render_settings = RenderSettings()
         self.ctx = None
         self.renderer: Renderer | None = None
         self._skin_images: dict[str, object] = {}
@@ -33,6 +35,10 @@ class GLView(QOpenGLWidget):
         self._with_context(lambda: (self.renderer.clear_skins(), self.renderer.set_model(self.player.model)))
         self.frame_all()
 
+    def attachments_changed(self) -> None:
+        """Recharge les meshes du modèle recomposé, sans toucher à la caméra ni aux skins."""
+        self._with_context(lambda: self.renderer.set_model(self.player.model))
+
     def set_skin(self, material: str, image) -> None:
         """Remplace la texture base color d'un matériau (None : texture d'origine)."""
         if image is None:
@@ -40,6 +46,12 @@ class GLView(QOpenGLWidget):
         else:
             self._skin_images[material] = image
         self._with_context(lambda: self.renderer.set_skin(material, image))
+
+    def set_render_settings(self, settings: RenderSettings) -> None:
+        self.render_settings = settings
+        if self.renderer is not None:
+            self.renderer.settings = settings
+        self.update()
 
     def frame_all(self) -> None:
         self.camera.frame(*self.player.bounds())
@@ -71,6 +83,7 @@ class GLView(QOpenGLWidget):
     def initializeGL(self) -> None:
         self.ctx = moderngl.create_context()
         self.renderer = Renderer(self.ctx)
+        self.renderer.settings = self.render_settings
         self.renderer.set_model(self.player.model)
         for material, image in self._skin_images.items():
             self.renderer.set_skin(material, image)
@@ -83,7 +96,7 @@ class GLView(QOpenGLWidget):
         view_proj = self.camera.projection(w / h) @ self.camera.view()
         frame = self.player.frame()
         segments = self.player.bone_segments(frame) if self.show_bones else None
-        self.renderer.render(fbo, view_proj, frame, segments)
+        self.renderer.render(fbo, view_proj, frame, segments, pixel_scale=ratio)
 
     def _tick(self) -> None:
         self.player.advance(self._clock.restart() / 1000.0)

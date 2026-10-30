@@ -15,6 +15,14 @@ class AnimationExport:
     name: str
     frames: int = 8  # nombre d'images exportées
     orientations: list[str] = field(default_factory=lambda: ["S"])
+    start: float = 0.0  # début de la plage exportée, en secondes
+    end: float | None = None  # fin de la plage, None : fin du clip
+
+    def time_range(self, duration: float) -> tuple[float, float]:
+        """Plage [début, fin] effectivement exportée, ramenée dans la durée du clip."""
+        start = min(max(self.start, 0.0), duration)
+        end = duration if self.end is None else min(max(self.end, start), duration)
+        return start, end
 
 
 @dataclass
@@ -31,6 +39,14 @@ def _clamp(value, bounds: tuple[int, int], default: int) -> int:
         return default
 
 
+def _time(value) -> float | None:
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        return None
+    return value if value >= 0 and value != float("inf") else None
+
+
 def config_from_dict(data: dict) -> ExportConfig:
     """Lève ValueError / AttributeError sur une structure invalide."""
     animations = []
@@ -38,11 +54,15 @@ def config_from_dict(data: dict) -> ExportConfig:
         if not isinstance(a, dict) or not a.get("name"):
             continue
         wanted = set(a.get("orientations", []))
+        start = _time(a.get("start")) or 0.0
+        end = _time(a.get("end"))
         animations.append(AnimationExport(
             str(a["name"]),
             # « fps » : ancienne clé, sa valeur est reprise comme nombre de frames
             _clamp(a.get("frames", a.get("fps", 8)), FRAMES_RANGE, 8),
             [o for o in ORIENTATIONS if o in wanted],
+            start,
+            end if end is not None and end > start else None,
         ))
     return ExportConfig(
         _clamp(data.get("sheetWidth", 1000), SHEET_WIDTH_RANGE, 1000),
@@ -55,9 +75,17 @@ def config_to_dict(config: ExportConfig) -> dict:
     return {
         "sheetWidth": config.sheet_width,
         "frameHeight": config.frame_height,
-        "animations": [{"name": a.name, "frames": a.frames, "orientations": a.orientations}
-                       for a in config.animations],
+        "animations": [_animation_to_dict(a) for a in config.animations],
     }
+
+
+def _animation_to_dict(a: AnimationExport) -> dict:
+    data = {"name": a.name, "frames": a.frames, "orientations": a.orientations}
+    if a.start > 0:
+        data["start"] = a.start
+    if a.end is not None:
+        data["end"] = a.end
+    return data
 
 
 def load_config(path: Path) -> tuple[ExportConfig, str | None]:

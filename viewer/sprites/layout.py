@@ -23,12 +23,13 @@ class Scale:
     ground_y: float  # ligne de sol, en pixels depuis le haut de la frame
 
 
-def compute_scale(top: float, bottom: float, frame_height: int) -> Scale:
-    """Échelle commune pour que [bottom, top] (unités monde, bottom ≤ 0) tienne dans la frame."""
+def compute_scale(top: float, bottom: float, frame_height: int, margin: int = MARGIN) -> Scale:
+    """Échelle commune pour que [bottom, top] (unités monde, bottom ≤ 0) tienne dans la frame,
+    à `margin` pixels des bords."""
     bottom = min(bottom, 0.0)
     span = max(top - bottom, 1e-6)
-    ppu = (frame_height - 2 * MARGIN) / span
-    return Scale(ppu, MARGIN + top * ppu)
+    ppu = max(frame_height - 2 * margin, 1) / span
+    return Scale(ppu, margin + top * ppu)
 
 
 @dataclass

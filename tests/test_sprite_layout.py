@@ -26,6 +26,11 @@ def test_playback_fps():
     assert playback_fps(0.0, 3) == 0
 
 
+def test_compute_scale_custom_margin():
+    s = compute_scale(top=2.0, bottom=0.0, frame_height=250, margin=10)
+    assert s.pixels_per_unit == pytest.approx(230 / 2.0) and s.ground_y == pytest.approx(240)
+
+
 def test_compute_scale():
     s = compute_scale(top=2.0, bottom=0.0, frame_height=250)
     assert s.pixels_per_unit == pytest.approx((250 - 2 * MARGIN) / 2.0)

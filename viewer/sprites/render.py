@@ -28,10 +28,12 @@ class SpriteRenderer:
             self._attachments, self._size = [color, depth], size
         return self._fbo
 
-    def render(self, frame: FrameData, view_proj: np.ndarray, size: tuple[int, int]) -> Image.Image:
+    def render(self, frame: FrameData, view_proj: np.ndarray, size: tuple[int, int],
+               pixel_scale: float = 1.0) -> Image.Image:
         fbo = self._framebuffer(size)
         fbo.viewport = (0, 0, *size)
-        self.renderer.render(fbo, view_proj, frame, None, background=(0.0, 0.0, 0.0, 0.0), grid=False)
+        self.renderer.render(fbo, view_proj, frame, None, background=(0.0, 0.0, 0.0, 0.0), grid=False,
+                             pixel_scale=pixel_scale)
         data = fbo.read(components=4, alignment=1)
         return Image.frombytes("RGBA", size, data).transpose(Image.Transpose.FLIP_TOP_BOTTOM)
 
